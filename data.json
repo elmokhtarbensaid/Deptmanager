@@ -1,0 +1,1 @@
+{"version":1,"cards":[{"id":"card_demo","name":"Example Visa","issuer":"Example Bank","creditLimit":5000,"apr":24.99,"minimumPayment":125,"dueDay":15,"closingDay":20,"transactions":[{"id":"tx_demo_1","date":"2026-09-01","type":"purchase","amount":450,"description":"Example purchase"}],"startingBalance":0}]}
