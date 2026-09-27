@@ -1,0 +1,10 @@
+async function openFile(){
+ if(!('showOpenFilePicker' in window)){alert('Your browser does not support direct file saving. Use Download JSON instead.');return}
+ try{[fileHandle]=await window.showOpenFilePicker({types:[{description:'JSON data',accept:{'application/json':['.json']}}],multiple:false});const file=await fileHandle.getFile();data=JSON.parse(await file.text());normalize();render();setStatus('Opened '+file.name+'. Changes are in memory until you click Save to data.json.',true)}catch(e){if(e.name!=='AbortError')alert('Could not open the JSON file: '+e.message)}
+}
+async function saveFile(){if(!fileHandle){alert('Open your data.json file first.');return}try{const writable=await fileHandle.createWritable();await writable.write(JSON.stringify(data,null,2));await writable.close();setStatus('Saved successfully to the same JSON file.',true)}catch(e){alert('Could not save the file: '+e.message)}}
+function download(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='data.json';a.click();URL.revokeObjectURL(a.href)}
+function normalize(){data.cards=(data.cards||[]).map(c=>({...c,startingBalance:Number(c.startingBalance||0),transactions:c.transactions||[]}))}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.tab).classList.add('active')});
+$('#openBtn').onclick=openFile;$('#saveBtn').onclick=saveFile;$('#downloadBtn').onclick=download;$('#addCardBtn').onclick=addCard;$('#addCardDash').onclick=addCard;$('#addTxBtn').onclick=addTx;$('#closeModal').onclick=closeModal;$('#txCardFilter').onchange=renderTransactions;$('#txTypeFilter').onchange=renderTransactions;$('#payoffFrequency').onchange=calculatePayoff;$('#customPayment').oninput=calculatePayoff;$('#calculateBtn').onclick=calculatePayoff;
+normalize();render();
