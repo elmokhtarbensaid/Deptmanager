@@ -1,4 +1,3 @@
-let fileHandle=null;
 function openFile(){
   let input=document.getElementById('jsonFileInput');
   if(!input){
@@ -79,5 +78,4 @@ $('#txTypeFilter').onchange=renderTransactions;
 $('#payoffFrequency').onchange=calculatePayoff;
 $('#customPayment').oninput=calculatePayoff;
 $('#calculateBtn').onclick=calculatePayoff;
-normalize();
-render();
+loadBundledData();
