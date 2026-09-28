@@ -1,0 +1,1 @@
+{"name":"Credit Card Manager","short_name":"Credit Cards","description":"Track credit card balances, transactions, interest and payoff plans.","start_url":"./","scope":"./","display":"standalone","orientation":"portrait-primary","background_color":"#f5f7fb","theme_color":"#0b57d0","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
