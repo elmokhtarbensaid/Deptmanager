@@ -7,9 +7,39 @@ function calculatePayoff(){
   if(frequency==='monthly'&&payment+0.005<mins){$('#payoffSummary').innerHTML=`<div class="summary-box"><small>Payment too low</small><strong>Minimums: ${money(mins)} / month</strong></div>`;$('#amortizationTable').innerHTML='<div class="empty">Your monthly payment must cover the minimum payments for all cards.</div>';return}
   const s=cards.map(c=>({card:c,bal:balance(c),rate:Math.pow(1+Number(c.apr||0)/100,1/12)-1,min:Number(c.minimumPayment)||0,paidMin:0}));
   const startDebt=s.reduce((a,x)=>a+x.bal,0);let totalInterest=0,totalPaid=0,period=0;const max=frequency==='weekly'?5200:1200;
-  const date=new Date();let lastMonth=date.getMonth(),lastYear=date.getFullYear(),display=[];
+  const today=new Date();
+  today.setHours(12,0,0,0);
+  const dueDays=s.map(x=>Number(x.card.dueDay)).filter(d=>d>=1&&d<=31);
+  const anchorDay=dueDays.length?Math.min(...dueDays):today.getDate();
+  function dueDateForMonth(year,month,day){
+    const last=new Date(year,month+1,0).getDate();
+    return new Date(year,month,Math.min(day,last),12,0,0,0);
+  }
+  function firstPaymentDate(){
+    const currentDue=dueDateForMonth(today.getFullYear(),today.getMonth(),anchorDay);
+    return currentDue>=today?currentDue:dueDateForMonth(today.getFullYear(),today.getMonth()+1,anchorDay);
+  }
+  let date=firstPaymentDate();
+  let lastMonth=date.getMonth(),lastYear=date.getFullYear(),display=[];
   while(s.some(x=>x.bal>0.005)&&period<max){
-    period++; if(frequency==='weekly')date.setDate(date.getDate()+7);else date.setMonth(date.getMonth()+1);
+    period++;
+    if(period>1){
+      if(frequency==='weekly'){
+        const regular=new Date(date);
+        regular.setDate(regular.getDate()+7);
+        let nextDue=null;
+        for(const x of s.filter(x=>x.bal>0.005)){
+          const d=Number(x.card.dueDay);
+          if(d<1||d>31)continue;
+          let candidate=dueDateForMonth(regular.getFullYear(),regular.getMonth(),d);
+          if(candidate<regular)candidate=dueDateForMonth(regular.getFullYear(),regular.getMonth()+1,d);
+          if(!nextDue||candidate<nextDue)nextDue=candidate;
+        }
+        date=nextDue&&nextDue<regular?nextDue:regular;
+      }else{
+        date=dueDateForMonth(date.getFullYear(),date.getMonth()+1,anchorDay);
+      }
+    }
     const month=date.getMonth(),year=date.getFullYear(),newMonth=month!==lastMonth||year!==lastYear;
     const start=new Map(s.map(x=>[x.card.id,x.bal])), interest=new Map(s.map(x=>[x.card.id,0])), paid=new Map(s.map(x=>[x.card.id,0]));
     if(frequency==='monthly'||newMonth){
