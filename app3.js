@@ -1,4 +1,4 @@
-const DEFAULT={version:1,cards:[]};
+const DEFAULT={version:1,cards:[],expenses:[],goals:[]};
 const SUPABASE_URL="https://hvfsgpixzbblpqruapik.supabase.co";
 const SUPABASE_KEY="sb_publishable_48cBvLI6JMtH1Haw6Tu0EQ_5dKZL3bv";
 const sb=window.supabase?.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -7,7 +7,7 @@ let isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="M
 
 function saveLocal(){try{localStorage.setItem("creditCardManagerDatabaseV2",JSON.stringify(data));return true}catch(e){console.warn("Could not save local database:",e);return false}}
 function toast(message){const el=document.createElement("div");el.textContent=message;el.style.cssText="position:fixed;right:20px;bottom:20px;background:#111;color:#fff;padding:12px 16px;border-radius:10px;z-index:9999;box-shadow:0 4px 18px rgba(0,0,0,.25);font:14px system-ui,sans-serif";document.body.appendChild(el);setTimeout(()=>el.remove(),2200)}
-function normalize(){data={version:1,cards:Array.isArray(data.cards)?data.cards.map(c=>({...c,startingBalance:Number(c.startingBalance||0),creditLimit:Number(c.creditLimit||0),apr:Number(c.apr||0),minimumPayment:Number(c.minimumPayment||0),dueDay:c.dueDay?Number(c.dueDay):null,closingDay:c.closingDay?Number(c.closingDay):null,transactions:Array.isArray(c.transactions)?c.transactions.map(t=>({...t,amount:Number(t.amount||0)})):[]})):[]}}
+function normalize(){data={version:1,cards:Array.isArray(data.cards)?data.cards.map(c=>({...c,startingBalance:Number(c.startingBalance||0),creditLimit:Number(c.creditLimit||0),apr:Number(c.apr||0),minimumPayment:Number(c.minimumPayment||0),dueDay:c.dueDay?Number(c.dueDay):null,closingDay:c.closingDay?Number(c.closingDay):null,transactions:Array.isArray(c.transactions)?c.transactions.map(t=>({...t,amount:Number(t.amount||0)})):[]})):[],expenses:Array.isArray(data.expenses)?data.expenses.map(x=>({...x,amount:Number(x.amount||0),frequency:['daily','weekly','monthly'].includes(x.frequency)?x.frequency:'monthly'})):[],goals:Array.isArray(data.goals)?data.goals.map(x=>({...x,target:Number(x.target||0),current:Number(x.current||0),deadline:x.deadline||''})):[]}}
 function changed(){saveLocal();render();autoSaveDatabase()}
 function autoSaveDatabase(){saveLocal();clearTimeout(saveTimer);if(user)saveTimer=setTimeout(saveCloud,400)}
 async function saveCloud(){if(!user||!sb)return;const {error}=await sb.from("credit_card_data").upsert({user_id:user.id,data,updated_at:new Date().toISOString()},{onConflict:"user_id"});if(error){console.error(error);setStatus("Cloud sync error: "+error.message,false)}}
