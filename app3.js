@@ -3,21 +3,86 @@ const SUPABASE_URL="https://hvfsgpixzbblpqruapik.supabase.co";
 const SUPABASE_KEY="sb_publishable_48cBvLI6JMtH1Haw6Tu0EQ_5dKZL3bv";
 const sb=window.supabase?.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let user=null,channel=null,saveTimer=null,databaseReady=false;
+let localRevision=0, savedRevision=0, cloudWrite=Promise.resolve(), loadingCloud=false;
 let isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 
 function saveLocal(){try{localStorage.setItem("creditCardManagerDatabaseV2",JSON.stringify(data));return true}catch(e){console.warn("Could not save local database:",e);return false}}
 function toast(message){const el=document.createElement("div");el.textContent=message;el.style.cssText="position:fixed;right:20px;bottom:20px;background:#111;color:#fff;padding:12px 16px;border-radius:10px;z-index:9999;box-shadow:0 4px 18px rgba(0,0,0,.25);font:14px system-ui,sans-serif";document.body.appendChild(el);setTimeout(()=>el.remove(),2200)}
 function normalize(){data={version:1,cards:Array.isArray(data.cards)?data.cards.map(c=>({...c,startingBalance:Number(c.startingBalance||0),creditLimit:Number(c.creditLimit||0),apr:Number(c.apr||0),minimumPayment:Number(c.minimumPayment||0),dueDay:c.dueDay?Number(c.dueDay):null,closingDay:c.closingDay?Number(c.closingDay):null,transactions:Array.isArray(c.transactions)?c.transactions.map(t=>({...t,amount:Number(t.amount||0)})):[]})):[],expenses:Array.isArray(data.expenses)?data.expenses.map(x=>({...x,amount:Number(x.amount||0),frequency:['daily','weekly','monthly'].includes(x.frequency)?x.frequency:'monthly'})):[],goals:Array.isArray(data.goals)?data.goals.map(x=>({...x,target:Number(x.target||0),current:Number(x.current||0),deadline:x.deadline||''})):[]}}
-function changed(){saveLocal();render();autoSaveDatabase()}
-function autoSaveDatabase(){saveLocal();clearTimeout(saveTimer);if(user)saveTimer=setTimeout(saveCloud,400)}
-async function saveCloud(){if(!user||!sb)return;const {error}=await sb.from("credit_card_data").upsert({user_id:user.id,data,updated_at:new Date().toISOString()},{onConflict:"user_id"});if(error){console.error(error);setStatus("Cloud sync error: "+error.message,false)}}
-async function loadCloud(){if(!user)return;setStatus("Cloud sync: loading…");const {data:r,error}=await sb.from("credit_card_data").select("data").eq("user_id",user.id).maybeSingle();if(error){setStatus("Cloud sync: database setup needed — "+error.message,false);return}if(r?.data){data=r.data;normalize();saveLocal();databaseReady=true;render();if(typeof renderPlanner==="function")renderPlanner()}else{normalize();await saveCloud();databaseReady=true;render();if(typeof renderPlanner==="function")renderPlanner()}setStatus("Cloud sync: "+user.email,true);subscribe()}
-function subscribe(){if(channel)sb.removeChannel(channel);channel=sb.channel("credit-card-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"credit_card_data",filter:"user_id=eq."+user.id},p=>{if(p.new?.data){data=p.new.data;normalize();saveLocal();render();if(typeof renderPlanner==="function")renderPlanner();setStatus("Cloud sync: updated",true)}}).subscribe()}
+function changed(){render();autoSaveDatabase()}
+function autoSaveDatabase(){localRevision++;saveLocal();clearTimeout(saveTimer);if(user)saveTimer=setTimeout(()=>{saveCloud()},400);else setStatus("Saved on this device only. Sign in to sync.",false)}
+async function saveCloud(){
+  clearTimeout(saveTimer);
+  if(!user||!sb){setStatus("Not signed in — changes saved on this device only.",false);return false}
+  const accountId=user.id;
+  const revision=localRevision;
+  const snapshot=JSON.parse(JSON.stringify(data));
+  const operation=async()=>{
+    if(!user||user.id!==accountId)return false;
+    setStatus("Cloud sync: saving…",false);
+    try{
+      const {data:confirmed,error}=await sb.from("credit_card_data")
+        .upsert({user_id:accountId,data:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"})
+        .select("user_id").single();
+      if(error)throw error;
+      if(!confirmed)throw new Error("Database did not confirm the save.");
+      savedRevision=Math.max(savedRevision,revision);
+      if(localRevision===revision)setStatus("Cloud sync: saved successfully.",true);
+      else setStatus("Cloud sync: newer changes still pending.",false);
+      return true;
+    }catch(error){
+      console.error("Cloud save failed:",error);
+      setStatus("Cloud sync FAILED: "+(error.message||String(error)),false);
+      return false;
+    }
+  };
+  cloudWrite=cloudWrite.then(operation,operation);
+  const success=await cloudWrite;
+  if(success&&localRevision>revision&&user?.id===accountId){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{saveCloud()},400);
+  }
+  return success;
+}
+async function loadCloud(){
+  if(!user)return;
+  const accountId=user.id;
+  loadingCloud=true;
+  setStatus("Cloud sync: loading…",false);
+  try{
+    const {data:r,error}=await sb.from("credit_card_data").select("data").eq("user_id",accountId).maybeSingle();
+    if(error)throw error;
+    if(!user||user.id!==accountId)return;
+    if(localRevision>savedRevision){
+      setStatus("Unsaved local changes detected. Use Sync Now to upload them.",false);
+    }else if(r?.data){
+      data=r.data;normalize();saveLocal();databaseReady=true;render();
+      if(typeof renderPlanner==="function")renderPlanner();
+      setStatus("Cloud sync: loaded.",true);
+    }else{
+      setStatus("No cloud database found. Use Sync Now to upload local data.",false);
+    }
+    subscribe();
+  }catch(error){
+    console.error("Cloud load failed:",error);
+    setStatus("Cloud sync FAILED: "+(error.message||String(error)),false);
+  }finally{loadingCloud=false}
+}
+function subscribe(){
+  if(channel)sb.removeChannel(channel);
+  channel=sb.channel("credit-card-"+user.id)
+    .on("postgres_changes",{event:"*",schema:"public",table:"credit_card_data",filter:"user_id=eq."+user.id},p=>{
+      if(!p.new?.data||loadingCloud||localRevision>savedRevision)return;
+      data=p.new.data;normalize();saveLocal();render();
+      if(typeof renderPlanner==="function")renderPlanner();
+      setStatus("Cloud sync: updated.",true);
+    }).subscribe();
+}
 async function signIn(){const {error}=await sb.auth.signInWithPassword({email:$("#authEmail").value.trim(),password:$("#authPassword").value});$("#authMessage").textContent=error?.message||"Signed in."}
 async function signUp(){const {error}=await sb.auth.signUp({email:$("#authEmail").value.trim(),password:$("#authPassword").value});$("#authMessage").textContent=error?.message||"Account created. Check your email if confirmation is required."}
 function openFile(){const input=$("#jsonFileInput");input.click()}
 async function importJson(file){try{const imported=JSON.parse(await file.text());if(!imported||typeof imported!=="object"||!Array.isArray(imported.cards))throw new Error("JSON must contain a cards array");data=imported;normalize();databaseReady=true;changed();toast(user?"Imported and syncing to cloud":"Imported locally")}catch(e){alert("Could not import JSON: "+e.message)}}
-function saveFile(){saveLocal();if(user){saveCloud();setStatus("Database saved to cloud.",true)}else{download();setStatus("Saved locally and exported as data.json.",true)}}
+async function saveFile(){saveLocal();if(user){await saveCloud()}else{download();setStatus("Saved locally and exported as JSON. Sign in to sync.",true)}}
 function download(){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="credit-card-manager.json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function loadLocalOrStarter(){try{const saved=localStorage.getItem("creditCardManagerDatabaseV2");if(saved){data=JSON.parse(saved);normalize();databaseReady=true;render();if(typeof renderPlanner==="function")renderPlanner();setStatus("Local database loaded. Sign in to sync across devices.",true);return}}catch(e){console.warn(e)}fetch("data.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(json=>{data=json;normalize();databaseReady=true;render();if(typeof renderPlanner==="function")renderPlanner();setStatus("Database ready. Sign in to sync across devices.",true)}).catch(e=>{data=structuredClone(DEFAULT);render();if(typeof renderPlanner==="function")renderPlanner();setStatus("Ready. Sign in to create your cloud database.",true)})}
 
@@ -32,7 +97,7 @@ $("#closeAuthBtn").onclick=()=>$("#authDialog").close();
 $("#authForm").onsubmit=async e=>{e.preventDefault();if(sb)await signIn()};
 $("#signUpBtn").onclick=async()=>{if(sb)await signUp()};
 $("#signOutBtn").onclick=async()=>{await sb.auth.signOut();$("#authDialog").close()};
-$("#syncNowBtn").onclick=async()=>{await saveCloud();setStatus(user?"Cloud sync: saved":"Cloud sync: not signed in",!!user)};
+$("#syncNowBtn").onclick=async()=>{await saveCloud()};
 $("#addCardBtn").onclick=addCard;$("#addCardDash").onclick=addCard;$("#addTxBtn").onclick=addTx;$("#closeModal").onclick=closeModal;$("#txCardFilter").onchange=renderTransactions;$("#txTypeFilter").onchange=renderTransactions;$("#payoffFrequency").onchange=calculatePayoff;$("#customPayment").oninput=calculatePayoff;$("#calculateBtn").onclick=calculatePayoff;
 $("#jsonFileInput").accept=".json,application/json";
 
