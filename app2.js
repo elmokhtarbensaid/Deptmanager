@@ -9,6 +9,9 @@ function calculatePayoff(){
   const startDebt=s.reduce((a,x)=>a+x.bal,0);let totalInterest=0,totalPaid=0,period=0;const max=frequency==='weekly'?5200:1200;
   const today=new Date();
   today.setHours(12,0,0,0);
+  const paydayInput=$('#firstPaymentDate');
+  const selectedDate=paydayInput?.value;
+  const manualStart=selectedDate?new Date(selectedDate+'T12:00:00'):null;
   const dueDays=s.map(x=>Number(x.card.dueDay)).filter(d=>d>=1&&d<=31);
   const anchorDay=dueDays.length?Math.min(...dueDays):today.getDate();
   function dueDateForMonth(year,month,day){
@@ -19,7 +22,7 @@ function calculatePayoff(){
     const currentDue=dueDateForMonth(today.getFullYear(),today.getMonth(),anchorDay);
     return currentDue>=today?currentDue:dueDateForMonth(today.getFullYear(),today.getMonth()+1,anchorDay);
   }
-  let date=firstPaymentDate();
+  let date=manualStart&&Number.isFinite(manualStart.getTime())?manualStart:firstPaymentDate();
   let lastMonth=date.getMonth(),lastYear=date.getFullYear(),display=[];
   while(s.some(x=>x.bal>0.005)&&period<max){
     period++;
@@ -35,7 +38,7 @@ function calculatePayoff(){
           if(candidate<regular)candidate=dueDateForMonth(regular.getFullYear(),regular.getMonth()+1,d);
           if(!nextDue||candidate<nextDue)nextDue=candidate;
         }
-        date=nextDue&&nextDue<regular?nextDue:regular;
+        date=manualStart?regular:(nextDue&&nextDue<regular?nextDue:regular);
       }else{
         date=dueDateForMonth(date.getFullYear(),date.getMonth()+1,anchorDay);
       }
@@ -87,3 +90,5 @@ function calculatePayoff(){
       '<div class="payoff-period-body">'+rows+'</div></section>';
   }).join('')||'<div class="empty">No payoff schedule.</div>';
 }
+// Initialize the optional manual first payment date to the next seven-day payday.
+(function(){const field=document.querySelector('#firstPaymentDate');if(!field)return;const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+7);const local=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');field.value=local;field.addEventListener('change',()=>calculatePayoff());})();
