@@ -1,11 +1,11 @@
 function calculatePayoff(){
   const cards=sortedCards().filter(c=>balance(c)>0.005), frequency=$('#payoffFrequency').value||'monthly';
-  const entered=Number($('#customPayment').value)||0, mins=cards.reduce((s,c)=>s+(Number(c.minimumPayment)||0),0);
+  const entered=Number($('#customPayment').value)||0, mins=cards.reduce((s,c)=>s+(cardMinimum(c)),0);
   const payment=entered>0?entered:(frequency==='weekly'?mins*12/52:mins), label=frequency==='weekly'?'week':'month';
   if(!cards.length){$('#payoffSummary').innerHTML='<div class="summary-box"><small>Status</small><strong>All cards are paid off</strong></div>';$('#amortizationTable').innerHTML='';return}
   if(payment<=0){$('#payoffSummary').innerHTML='<div class="summary-box"><small>Total payment</small><strong>Enter a payment</strong></div>';$('#amortizationTable').innerHTML='';return}
   if(frequency==='monthly'&&payment+0.005<mins){$('#payoffSummary').innerHTML=`<div class="summary-box"><small>Payment too low</small><strong>Minimums: ${money(mins)} / month</strong></div>`;$('#amortizationTable').innerHTML='<div class="empty">Your monthly payment must cover the minimum payments for all cards.</div>';return}
-  const s=cards.map(c=>({card:c,bal:balance(c),rate:Math.pow(1+Number(c.apr||0)/100,1/12)-1,min:Number(c.minimumPayment)||0,paidMin:0}));
+  const s=cards.map(c=>({card:c,bal:balance(c),rate:Math.pow(1+Number(c.apr||0)/100,1/12)-1,min:cardMinimum(c),paidMin:0}));
   const startDebt=s.reduce((a,x)=>a+x.bal,0);let totalInterest=0,totalPaid=0,period=0;const max=frequency==='weekly'?5200:1200;
   const today=new Date();
   today.setHours(12,0,0,0);
@@ -47,7 +47,7 @@ function calculatePayoff(){
     const start=new Map(s.map(x=>[x.card.id,x.bal])), interest=new Map(s.map(x=>[x.card.id,0])), paid=new Map(s.map(x=>[x.card.id,0]));
     if(frequency==='monthly'||newMonth){
       for(const x of s)x.paidMin=0;
-      for(const x of s.filter(x=>x.bal>0.005)){const v=x.bal*x.rate;x.bal+=v;interest.set(x.card.id,v);totalInterest+=v}
+      for(const x of s.filter(x=>x.bal>0.005)){const v=x.bal*x.rate;x.bal+=v;interest.set(x.card.id,v);totalInterest+=v;x.min=cardMinimum(x.card,x.bal,v)}
       lastMonth=month;lastYear=year;
     }
     let rem=payment;
