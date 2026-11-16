@@ -86,10 +86,13 @@ function calculatePayoff(){
         '<div><span>Ending balance</span><strong>'+money(x.end)+'</strong></div>'+
         '</div></details>';
     }).join('');
-    return '<section class="payoff-period">'+
-      '<div class="payoff-period-head"><strong>'+word+' '+g.period+'</strong><span>Payment date: '+g.date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+'</span></div>'+
-      '<div class="payoff-period-body">'+rows+'</div>'+
-      '<div class="payoff-period-total"><span>Total remaining balance</span><strong>'+money(remaining)+'</strong></div></section>';
+    return '<details class="payoff-period payoff-period-collapsible">'+
+      '<summary class="payoff-period-summary">'+
+      '<span class="payoff-period-summary-item"><small>Period</small><strong>'+word+' '+g.period+'</strong></span>'+
+      '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
+      '<span class="payoff-period-summary-item"><small>Remaining balance</small><strong>'+money(remaining)+'</strong></span>'+
+      '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
+      '<div class="payoff-period-body">'+rows+'</div></details>';
   }).join('')||'<div class="empty">No payoff schedule.</div>';
 }
 // Initialize the optional manual first payment date to the next seven-day payday.
