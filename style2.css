@@ -14,3 +14,10 @@
 /* Keep the native iOS date picker within the payoff form column. */
 #firstPaymentDateLabel, #firstPaymentDate {min-width:0;max-width:100%;box-sizing:border-box}
 #firstPaymentDate {display:block;width:100%;-webkit-appearance:auto;appearance:auto}
+
+/* iOS Safari: allow the grid track and date control to shrink to available space. */
+#payoff .calculator-grid{min-width:0;grid-template-columns:minmax(0,400px) minmax(0,1fr)}
+#payoff .calculator-grid>div{min-width:0;max-width:100%}
+#payoff #firstPaymentDateLabel{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+#payoff #firstPaymentDate{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;padding-inline:10px}
+@media(max-width:900px){#payoff .calculator-grid{grid-template-columns:minmax(0,1fr)}}
