@@ -69,6 +69,7 @@ function calculatePayoff(){
   const groups=new Map();display.forEach(r=>{if(!groups.has(r.period))groups.set(r.period,{period:r.period,date:r.date,rows:[]});groups.get(r.period).rows.push(r)});
   const word=frequency==='weekly'?'Week':'Month';
   $('#amortizationTable').innerHTML=[...groups.values()].map(g=>{
+    const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
     const rows=g.rows.map(x=>{
       return '<details class="payoff-payment"><summary><div class="payoff-main-row">'+
         '<div class="payoff-card-name"><strong>'+esc(x.card)+'</strong></div>'+
@@ -87,7 +88,8 @@ function calculatePayoff(){
     }).join('');
     return '<section class="payoff-period">'+
       '<div class="payoff-period-head"><strong>'+word+' '+g.period+'</strong><span>Payment date: '+g.date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+'</span></div>'+
-      '<div class="payoff-period-body">'+rows+'</div></section>';
+      '<div class="payoff-period-body">'+rows+'</div>'+
+      '<div class="payoff-period-total"><span>Total remaining balance</span><strong>'+money(remaining)+'</strong></div></section>';
   }).join('')||'<div class="empty">No payoff schedule.</div>';
 }
 // Initialize the optional manual first payment date to the next seven-day payday.
