@@ -10,3 +10,7 @@
 .payoff-period-collapsible[open] .payoff-period-chevron{transform:rotate(180deg)}
 .payoff-period-collapsible>.payoff-period-body{border-top:1px solid #e5e7eb}
 @media(max-width:600px){.payoff-period-collapsible>.payoff-period-summary{grid-template-columns:.7fr 1.35fr 1.35fr auto;gap:6px;padding:13px 8px}.payoff-period-summary-item small{font-size:10px}.payoff-period-summary-item strong{font-size:12px}.payoff-period-chevron{font-size:13px}}
+
+/* Keep the native iOS date picker within the payoff form column. */
+#firstPaymentDateLabel, #firstPaymentDate {min-width:0;max-width:100%;box-sizing:border-box}
+#firstPaymentDate {display:block;width:100%;-webkit-appearance:auto;appearance:auto}
