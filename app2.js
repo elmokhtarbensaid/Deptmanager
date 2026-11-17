@@ -5,6 +5,28 @@ function calculatePayoff(){
   if(!cards.length){$('#payoffSummary').innerHTML='<div class="summary-box"><small>Status</small><strong>All cards are paid off</strong></div>';$('#amortizationTable').innerHTML='';return}
   if(payment<=0){$('#payoffSummary').innerHTML='<div class="summary-box"><small>Total payment</small><strong>Enter a payment</strong></div>';$('#amortizationTable').innerHTML='';return}
   if(frequency==='monthly'&&payment+0.005<mins){$('#payoffSummary').innerHTML=`<div class="summary-box"><small>Payment too low</small><strong>Minimums: ${money(mins)} / month</strong></div>`;$('#amortizationTable').innerHTML='<div class="empty">Your monthly payment must cover the minimum payments for all cards.</div>';return}
+  // Historical periods use recorded transactions; future periods use today's balances.
+  // This prevents already-recorded payments from being deducted a second time.
+  const historyStartValue=$('#firstPaymentDate')?.value;
+  const historyStart=historyStartValue?new Date(historyStartValue+'T12:00:00'):null;
+  const now=new Date();now.setHours(12,0,0,0);
+  const historical=[];
+  const periodDays=frequency==='weekly'?7:null;
+  if(historyStart&&Number.isFinite(historyStart.getTime())&&historyStart<now){
+    let cursor=new Date(historyStart),count=0;
+    while(cursor<now&&count<5200){
+      const end=new Date(cursor);
+      if(frequency==='weekly')end.setDate(end.getDate()+7);
+      else end.setMonth(end.getMonth()+1);
+      const endExclusive=end<now?end:now;
+      const iso=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+      const from=iso(cursor),until=iso(endExclusive);
+      const entries=(data.cards||[]).flatMap(c=>(c.transactions||[]).filter(t=>t.type==='payment'&&t.date>=from&&t.date<until).map(t=>({card:c.name,amount:Math.max(0,Number(t.amount)||0),date:t.date,id:t.id})));
+      const actual=entries.reduce((sum,t)=>sum+t.amount,0);
+      historical.push({period:++count,date:new Date(cursor),entries,actual,complete:end<=now});
+      cursor=end;
+    }
+  }
   const s=cards.map(c=>({card:c,bal:balance(c),rate:Math.pow(1+Number(c.apr||0)/100,1/12)-1,min:cardMinimum(c),paidMin:0}));
   const startDebt=s.reduce((a,x)=>a+x.bal,0);let totalInterest=0,totalPaid=0,period=0;const max=frequency==='weekly'?5200:1200;
   const today=new Date();
@@ -23,6 +45,11 @@ function calculatePayoff(){
     return currentDue>=today?currentDue:dueDateForMonth(today.getFullYear(),today.getMonth()+1,anchorDay);
   }
   let date=manualStart&&Number.isFinite(manualStart.getTime())?manualStart:firstPaymentDate();
+  if(historical.length){
+    date=new Date(historical[historical.length-1].date);
+    if(frequency==='weekly')date.setDate(date.getDate()+7);
+    else date.setMonth(date.getMonth()+1);
+  }
   let lastMonth=date.getMonth(),lastYear=date.getFullYear(),display=[];
   while(s.some(x=>x.bal>0.005)&&period<max){
     period++;
@@ -90,11 +117,25 @@ function calculatePayoff(){
     for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date);let recommended=new Date(due);recommended.setDate(recommended.getDate()-3);if(recommended<date)recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,start:st,interest:v,payment:p,end:x.bal})}}
     lastMonth=month;lastYear=year;
   }
-  const complete=!s.some(x=>x.bal>0.005), payoff=complete?(frequency==='weekly'?`${period} weeks (${(period/52).toFixed(1)} years)`:`${period} months (${(period/12).toFixed(1)} years)`):'>100 '+(frequency==='weekly'?'weeks':'years');
+  const pastCount=historical.length;
+  const complete=!s.some(x=>x.bal>0.005), fullPeriods=period+pastCount, payoff=complete?(frequency==='weekly'?fullPeriods+' weeks ('+(fullPeriods/52).toFixed(1)+' years)':fullPeriods+' months ('+(fullPeriods/12).toFixed(1)+' years)'):'>100 '+(frequency==='weekly'?'weeks':'years');
   $('#payoffSummary').innerHTML='<div class="compact-payoff-stat"><span class="compact-stat-icon"><svg class="payoff-metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h2M14 14h2M8 18h2"/></svg></span><small>Payoff time</small><strong>'+payoff+'</strong></div><div class="compact-payoff-stat"><span class="compact-stat-icon"><svg class="payoff-metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/><path d="m12 12 8-8"/></svg></span><small>Estimated payoff</small><strong>'+(complete?date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—')+'</strong></div><div class="compact-payoff-stat"><span class="compact-stat-icon"><svg class="payoff-metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M19 5 5 19"/></svg></span><small>Total interest</small><strong>'+money(totalInterest)+'</strong></div><div class="compact-payoff-stat"><span class="compact-stat-icon"><svg class="payoff-metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5"/></svg></span><small>Total cost</small><strong>'+money(totalPaid)+'</strong></div>';
-  const groups=new Map();display.forEach(r=>{if(!groups.has(r.period))groups.set(r.period,{period:r.period,date:r.date,rows:[]});groups.get(r.period).rows.push(r)});
+  const groups=new Map();display.forEach(r=>{const key=r.period+pastCount;if(!groups.has(key))groups.set(key,{period:key,date:r.date,rows:[]});groups.get(key).rows.push(r)});
   const word=frequency==='weekly'?'Week':'Month';
-  $('#amortizationTable').innerHTML=[...groups.values()].map(g=>{
+  const historyHtml=historical.map(g=>{
+    const status=g.actual+0.005>=payment?'Paid':g.actual>0.005?'Partially paid':'Unpaid';
+    const recorded=g.entries.map(t=>'<div class="payoff-history-transaction"><strong>'+esc(t.card)+'</strong><span>'+esc(t.date)+'</span><strong>'+money(t.amount)+'</strong></div>').join('');
+    return '<details class="payoff-period payoff-period-collapsible payoff-history-period">'+
+      '<summary class="payoff-period-summary">'+
+      '<span class="payoff-period-summary-item"><small>Period</small><strong>'+(frequency==='weekly'?'Week ':'Month ')+g.period+'</strong></span>'+
+      '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
+      '<span class="payoff-period-summary-item"><small>Recorded payments</small><strong>'+money(g.actual)+'</strong></span>'+
+      '<span class="payoff-period-summary-item"><small>Status</small><strong>'+status+'</strong></span>'+
+      '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
+      '<div class="payoff-period-body"><p>Recorded payments for this period. Target: '+money(payment)+'.</p>'+
+      (recorded||'<div class="empty">No payments recorded in this period.</div>')+'</div></details>';
+  }).join('');
+  $('#amortizationTable').innerHTML=historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
     const rows=g.rows.map(x=>{
       return '<details class="payoff-payment"><summary><div class="payoff-main-row">'+
