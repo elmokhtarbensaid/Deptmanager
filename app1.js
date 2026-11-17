@@ -41,7 +41,7 @@ function render(){
 }
 function renderTransactions(){
   const cf=$('#txCardFilter').value,tf=$('#txTypeFilter').value,month=document.querySelector('#txMonthFilter')?.value||'',rows=[];
-  for(const c of data.cards||[]){if(cf&&c.id!==cf)continue;let running=0;for(const t of sortedTx(c)){running+=txSigned(t);if(tf&&t.type!==tf)continue;if(month&&!String(t.date||'').startsWith(month))continue;rows.push({...t,card:c.name,balanceAfter:Math.max(0,running)});}}
+  for(const c of data.cards||[]){if(cf&&c.id!==cf)continue;let running=Number(c.startingBalance)||0;for(const t of sortedTx(c)){running+=txSigned(t);if(tf&&t.type!==tf)continue;if(month&&!String(t.date||'').startsWith(month))continue;rows.push({...t,card:c.name,balanceAfter:Math.max(0,running)});}}
   rows.sort((a,b)=>b.date.localeCompare(a.date));
   const tbody=$('#txTable');
   if(!rows.length){tbody.innerHTML='<tr class="tx-empty"><td colspan="7" class="empty">No transactions match these filters.</td></tr>';return}
@@ -61,7 +61,7 @@ function renderTransactions(){
     const id=String(t.id).replace(/[^a-zA-Z0-9_-]/g,'');
     return '<tr class="tx-compact-row" data-tx-id="'+esc(id)+'" tabindex="0" role="button" aria-expanded="false" aria-label="Show details for '+esc(label)+'">'+
       '<td class="tx-main" colspan="7"><span class="tx-row-icon tx-icon-'+esc(t.type)+'">'+svg(t.type)+'</span><span class="tx-row-copy"><strong>'+esc(label)+'</strong><small>'+esc(formatDate(t.date))+'</small></span><strong class="tx-row-amount '+(positive?'positive':'')+'">'+(positive?'-':'')+money(t.amount)+'</strong><span class="tx-chevron" aria-hidden="true">›</span></td>'+
-      '<td class="tx-expanded" colspan="7"><div class="tx-detail-grid"><span>Card <strong>'+esc(t.card)+'</strong></span><span>Type <strong>'+esc(type)+'</strong></span><span>Balance after <strong>'+money(t.balanceAfter)+'</strong></span><span>Date <strong>'+esc(formatDate(t.date))+'</strong></span></div><div class="tx-row-actions"><button type="button" class="secondary" data-tx-action="edit">Edit</button><button type="button" class="danger" data-tx-action="delete">Delete</button></div></td></tr>';
+      '<td class="tx-expanded" colspan="7"><div class="tx-detail-grid"><span>Card <strong>'+esc(t.card)+'</strong></span><span>Balance after <strong>'+money(t.balanceAfter)+'</strong></span></div><div class="tx-row-actions"><button type="button" class="secondary" data-tx-action="edit">Edit</button><button type="button" class="danger" data-tx-action="delete">Delete</button></div></td></tr>';
   }).join('');
   tbody.querySelectorAll('.tx-compact-row').forEach((tr,i)=>{
     const t=rows[i];
