@@ -65,7 +65,7 @@ function calculatePayoff(){
     lastMonth=month;lastYear=year;
   }
   const complete=!s.some(x=>x.bal>0.005), payoff=complete?(frequency==='weekly'?`${period} weeks (${(period/52).toFixed(1)} years)`:`${period} months (${(period/12).toFixed(1)} years)`):'>100 '+(frequency==='weekly'?'weeks':'years');
-  $('#payoffSummary').innerHTML=[['Starting debt',money(startDebt)],['Total payment',money(payment)+' / '+label],['Payoff time',payoff],['Estimated payoff',complete?date.toLocaleDateString():'—'],['Total interest',money(totalInterest)],['Total paid',money(totalPaid)]].map(x=>`<div class="summary-box"><div class="payoff-metric-text"><small>${x[0]}</small><strong>${x[1]}</strong></div></div>`).join('');
+  $('#payoffSummary').innerHTML='<div class="compact-payoff-stat"><span class="compact-stat-icon">▦</span><small>Payoff time</small><strong>'+payoff+'</strong><span class="compact-payoff-date">Estimated payoff: '+(complete?date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—')+'</span></div><div class="compact-payoff-stat"><span class="compact-stat-icon">%</span><small>Total interest</small><strong>'+money(totalInterest)+'</strong></div><div class="compact-payoff-stat"><span class="compact-stat-icon">▤</span><small>Total cost</small><strong>'+money(totalPaid)+'</strong></div>';
   const groups=new Map();display.forEach(r=>{if(!groups.has(r.period))groups.set(r.period,{period:r.period,date:r.date,rows:[]});groups.get(r.period).rows.push(r)});
   const word=frequency==='weekly'?'Week':'Month';
   $('#amortizationTable').innerHTML=[...groups.values()].map(g=>{
