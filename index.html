@@ -180,6 +180,38 @@ th,td,.planner-item,.planner-section-head,.payoff-payment,.payoff-period-body{bo
 #payoffSummary .summary-box:nth-child(6) .payoff-metric-text{display:flex!important;flex:1!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;min-height:32px!important}
 #payoffSummary .summary-box:nth-child(6) small,#payoffSummary .summary-box:nth-child(6) strong{display:block!important;margin:0!important;line-height:1.25!important}
 @media(max-width:600px){#payoffSummary .summary-box:nth-child(1),#payoffSummary .summary-box:nth-child(2){min-height:74px!important}#payoffSummary .summary-box:nth-child(6){min-height:52px!important}}
+</style><style id="app-icon-completeness-v10">
+/* Consistent iconography across existing app; never substitute symbols for account data. */
+.toolbar>button,.toolbar .menu-group>button{gap:7px!important}
+.ui-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:19px;height:19px;vertical-align:middle}
+.ui-icon svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.toolbar .ui-icon{width:18px;height:18px}
+.status .ui-icon{width:22px;height:22px;color:#67f5b0}
+.status:before{display:none!important}
+.panel-head h2 .ui-icon{width:23px;height:23px;margin-right:8px;color:#d7eaff}
+.stat .stat-symbol{grid-column:1;grid-row:1/span 2;display:grid;place-items:center;width:46px;height:46px;border-radius:13px;background:#bcdcff;color:#0967d6}
+.stat .stat-symbol .ui-icon{width:26px;height:26px}
+.stat:before{display:none!important}
+.stat:nth-child(1) .stat-symbol{background:#ffd8df;color:#bc1b42}
+.stat:nth-child(4) .stat-symbol{background:#ffedc4;color:#bd7a00}
+.stat:nth-child(5) .stat-symbol{background:#c6f1dd;color:#087b4e}
+.stat:nth-child(3) .stat-symbol{border-radius:50%;width:49px;height:49px;background:radial-gradient(closest-side,#eaf2ff 73%,transparent 76%),conic-gradient(#316dff var(--util),#bbcae8 0);font-size:10px;font-weight:750;color:#173d85}
+.account-card:before{display:none!important}
+.issuer-mark{display:inline-flex;align-items:center;justify-content:center;min-width:55px;max-width:92px;min-height:35px;padding:4px 7px;border-radius:9px;background:linear-gradient(125deg,#1a477c,#102844);border:1px solid #3b6295;color:#fff;font-size:13px;font-weight:800;letter-spacing:-.5px;line-height:1;text-align:center;overflow:hidden}
+.issuer-mark[data-issuer="capital"]{font-style:italic;font-size:12px;color:#fff;border-bottom:3px solid #e44b57}
+.issuer-mark[data-issuer="citi"]{font-size:21px;color:#fff;text-decoration:underline;text-decoration-color:#f35d66}
+.issuer-mark[data-issuer="ollo"]{background:linear-gradient(120deg,#642a93,#b332b4);font-size:20px}
+.issuer-mark[data-issuer="truist"]{background:#4b237c;font-size:14px}
+.issuer-mark[data-issuer="apple"]{font-size:19px;background:#26354c}
+.issuer-mark[data-issuer="mercury"]{background:#1c4d66}
+.account-card .issuer-mark{margin:0 0 8px}
+#cards td[data-label="Card"] .issuer-mark{margin-right:8px}
+.tx-type-icon{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:#234669;color:#c6ddfa;margin-right:7px;vertical-align:middle}
+.tx-type-icon .ui-icon{width:19px;height:19px}
+.tx-type-icon[data-type="payment"],.tx-type-icon[data-type="credit"]{background:#155e42;color:#6ef5a6}
+.tx-type-icon[data-type="purchase"],.tx-type-icon[data-type="fee"]{background:#304461;color:#e1edff}
+.tx-type-icon[data-type="interest"]{background:#34476b;color:#d9e6ff}
+@media(max-width:600px){.stat .stat-symbol{width:34px;height:34px;border-radius:10px}.stat .stat-symbol .ui-icon{width:20px;height:20px}.stat:nth-child(3) .stat-symbol{width:35px;height:35px;font-size:9px}.toolbar .ui-icon{width:16px;height:16px}.issuer-mark{min-height:30px;min-width:48px}}
 </style></head><body><header class="topbar"><div><h1>Credit Card Manager</h1><p>Track balances, interest, payments and payoff plans.</p></div><div class="toolbar"><button id="accountBtn" class="secondary">Sign In / Sync</button><button id="syncNowBtn" class="secondary" style="display:none">Sync Now</button><button id="openBtn" class="secondary">Open Database</button><button id="saveBtn" class="primary">Save Database</button><button id="importJsonBtn" class="secondary">Import JSON</button><button id="downloadBtn" class="secondary">Export JSON</button><input id="jsonFileInput" type="file" accept=".json,application/json" hidden></div></header><main><div id="status" class="status">Cloud sync: not signed in</div><section class="stats" id="stats"></section><div class="tabs"><button class="tab active" data-tab="dashboard"><span class="nav-icon">⌂</span>Dashboard</button><button class="tab" data-tab="cards"><span class="nav-icon">▣</span>Credit Cards</button><button class="tab" data-tab="transactions"><span class="nav-icon">⇄</span>Transactions</button><button class="tab" data-tab="payoff"><span class="nav-icon">▦</span>Payoff Calculator</button><button class="tab" data-tab="planner"><span class="nav-icon">▥</span>Income Planner</button></div><section id="dashboard" class="tab-panel active"><div class="panel"><div class="panel-head"><h2>Accounts</h2><button class="primary" id="addCardDash">+ Add Card</button></div><div id="dashboardCards" class="card-grid"></div></div></section><section id="cards" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Credit Cards</h2><button class="primary" id="addCardBtn">+ Add Card</button></div><div class="table-wrap"><table><thead><tr><th>Card</th><th>Balance</th><th>Limit</th><th>APR</th><th>Est. minimum</th><th>Due</th><th>Actions</th></tr></thead><tbody id="cardsTable"></tbody></table></div></div></section><section id="transactions" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Transactions</h2><button class="primary" id="addTxBtn">+ Add Transaction</button></div><div class="filters"><select id="txCardFilter"><option value="">All cards</option></select><select id="txTypeFilter"><option value="">All types</option><option value="purchase">Spending</option><option value="payment">Payment</option><option value="interest">Interest</option><option value="fee">Late fee / fee</option><option value="credit">Credit / adjustment</option></select></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Card</th><th>Type</th><th>Description</th><th>Amount</th><th>Balance After</th><th>Actions</th></tr></thead><tbody id="txTable"></tbody></table></div></div></section><section id="payoff" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Payoff Calculator</h2></div><div class="calculator-grid"><div><label>Payment frequency<select id="payoffFrequency"><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select></label><label>Total payment<input id="customPayment" type="number" min="0" step="0.01" placeholder="Use combined minimums"></label><label id="firstPaymentDateLabel">First payment date<input id="firstPaymentDate" type="date"></label><p class="muted payoff-note">Payments are applied to minimums first, then any remaining amount goes to the smallest balance. Cards are always shown from least balance to greatest.</p><button class="primary" id="calculateBtn" style="display:none" aria-hidden="true" tabindex="-1">Calculate Payoff</button></div><div id="payoffSummary" class="payoff-summary"></div></div><div class="payoff-schedule" id="amortizationTable"></div></div></section><section id="planner" class="tab-panel"><div class="panel"><div class="panel-head"><div><h2>Income Planner</h2><p class="muted planner-subtitle">Track recurring expenses and savings goals, then see the daily income needed to cover them.</p></div></div><div id="plannerSummary" class="planner-summary"></div><div class="planner-grid"><div class="planner-column"><div class="planner-section-head"><h3>Expenses</h3><button class="primary" id="addExpenseBtn" type="button" onclick="addExpense()">+ Add Expense</button></div><div id="expensesList" class="planner-list"></div></div><div class="planner-column"><div class="planner-section-head"><h3>Goals</h3><button class="primary" id="addGoalBtn" type="button" onclick="addGoal()">+ Add Goal</button></div><div id="goalsList" class="planner-list"></div></div></div></div></section></main><div class="modal hidden" id="modal"><div class="modal-box"><div class="modal-head"><h2 id="modalTitle"></h2><button class="icon" id="closeModal">×</button></div><form id="modalForm"></form></div></div><dialog id="authDialog"><form method="dialog" id="authForm"><h3>Sign in to sync</h3><p>Use the same account on your PC and iPhone.</p><label>Email<input id="authEmail" type="email" required></label><label>Password<input id="authPassword" type="password" minlength="6" required></label><div class="form-actions"><button type="button" class="secondary" id="closeAuthBtn">Cancel</button><button type="button" class="secondary" id="signUpBtn">Create Account</button><button>Sign In</button></div><p id="authMessage"></p><button type="button" class="danger" id="signOutBtn" style="display:none">Sign Out</button></form></dialog><div id="accountStatus" aria-live="polite"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app1.js?v=6"></script><script src="app2.js?v=11"></script><script src="app3.js?v=7"></script><script src="app5.js?v=2"></script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error))}</script><script>
 (function(){
 const bar=document.querySelector('.toolbar');if(!bar)return;
@@ -200,5 +232,45 @@ const paths=[
 ];
 function apply(){const root=document.querySelector('#payoffSummary');if(!root)return;root.querySelectorAll('.summary-box').forEach((box,i)=>{if(i>=paths.length||box.querySelector('.payoff-icon'))return;const icon=document.createElement('span');icon.className='payoff-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'+paths[i]+'</svg>';box.insertBefore(icon,box.firstChild)})}
 const root=document.querySelector('#payoffSummary');if(root){new MutationObserver(apply).observe(root,{childList:true});apply()}
+})();
+</script><script id="app-icons-v10">
+(function(){
+const shapes={
+user:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+sync:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5 9a8 8 0 0 1 14-2l1 5M4 12l1 5a8 8 0 0 0 14-2"/>',
+database:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 4 16 4 16 0V5M4 12v7c0 4 16 4 16 0v-7"/>',
+file:'<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM13 2v7h7M9 13l-2 2 2 2M15 13l2 2-2 2"/>',
+cloud:'<path d="M7 18h12a4 4 0 0 0 .2-8 7 7 0 0 0-13.5-1A4.5 4.5 0 0 0 7 18Z"/><path d="m9 13 2 2 4-4"/>',
+wallet:'<rect x="2" y="6" width="20" height="15" rx="2"/><path d="M2 10h20M6 6V4a2 2 0 0 1 2-2h9"/>',
+layers:'<path d="m12 2 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5"/>',
+calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',
+percent:'<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M19 5 5 19"/>',
+cards:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+arrows:'<path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>',
+calculator:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h1M12 11h1M16 11h1M8 15h1M12 15h1M16 15h1"/>',
+chart:'<path d="M4 20V13M10 20V8M16 20V4M22 20V11"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+purchase:'<circle cx="9" cy="20" r="1"/><circle cx="19" cy="20" r="1"/><path d="M2 3h2l3 13h13l2-9H5"/>',
+payment:'<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/>',
+info:'<circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/>',
+target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>'
+};
+function icon(name){return '<span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24">'+(shapes[name]||shapes.cards)+'</svg></span>'}
+function issuer(c){const v=((c?.issuer||'')+' '+(c?.name||'')).toLowerCase();if(v.includes('capital one'))return ['capital','Capital One'];if(v.includes('citi')||v.includes('costco'))return ['citi','citi'];if(v.includes('truist'))return ['truist','TRUIST'];if(v.includes('ollo'))return ['ollo','ollo'];if(v.includes('apple'))return ['apple','Apple'];if(v.includes('mercury'))return ['mercury','Mercury'];if(v.includes('chase'))return ['chase','CHASE'];if(v.includes('amex')||v.includes('american express'))return ['amex','AMEX'];if(v.includes('merrick'))return ['merrick','Merrick'];return ['other',String(c?.issuer||'CARD').slice(0,12)]}
+function mark(c){const [key,name]=issuer(c);return '<span class="issuer-mark" data-issuer="'+key+'" aria-label="'+name+' issuer label">'+name+'</span>'}
+function enhance(){
+const st=document.querySelector('#stats');if(st)st.querySelectorAll('.stat').forEach((el,i)=>{if(el.querySelector('.stat-symbol'))return;const b=document.createElement('span');b.className='stat-symbol';b.innerHTML=i===2?(el.querySelector('strong')?.textContent||'0%'):icon(['wallet','layers','percent','calendar','percent'][i]);el.prepend(b)});
+const cards=typeof sortedCards==='function'?sortedCards():[];
+const dc=document.querySelector('#dashboardCards');if(dc)dc.querySelectorAll('.account-card').forEach((el,i)=>{if(el.querySelector('.issuer-mark'))return;el.insertAdjacentHTML('afterbegin',mark(cards[i]))});
+const ct=document.querySelector('#cardsTable');if(ct)ct.querySelectorAll('tr').forEach((tr,i)=>{const td=tr.querySelector('td[data-label="Card"]');if(td&&!td.querySelector('.issuer-mark'))td.insertAdjacentHTML('afterbegin',mark(cards[i]))});
+const tx=document.querySelector('#txTable');if(tx)tx.querySelectorAll('tr').forEach(tr=>{const td=tr.querySelector('td[data-label="Type"]');if(!td||td.querySelector('.tx-type-icon'))return;const type=td.textContent.trim().toLowerCase();const n=type==='payment'||type==='credit'?'payment':type==='purchase'||type==='fee'?'purchase':type==='interest'?'percent':'cards';td.insertAdjacentHTML('afterbegin','<span class="tx-type-icon" data-type="'+type+'">'+icon(n)+'</span>')});
+}
+const toolbar=[['accountBtn','user'],['syncNowBtn','sync']];toolbar.forEach(([id,n])=>{const el=document.getElementById(id);if(el&&!el.querySelector('.ui-icon'))el.insertAdjacentHTML('afterbegin',icon(n))});
+document.querySelectorAll('.toolbar .menu-group>button').forEach((el,i)=>{if(!el.querySelector('.ui-icon'))el.insertAdjacentHTML('afterbegin',icon(i===0?'database':'file'))});
+const status=document.querySelector('#status');if(status&&!status.querySelector('.ui-icon'))status.insertAdjacentHTML('afterbegin',icon('cloud'));
+[['#dashboard .panel-head h2','cards'],['#cards .panel-head h2','cards'],['#transactions .panel-head h2','arrows'],['#payoff .panel-head h2','calculator'],['#planner .panel-head h2','chart']].forEach(([sel,n])=>{const el=document.querySelector(sel);if(el&&!el.querySelector('.ui-icon'))el.insertAdjacentHTML('afterbegin',icon(n))});
+[['addCardDash','plus'],['addCardBtn','plus'],['addTxBtn','plus']].forEach(([id,n])=>{const el=document.getElementById(id);if(el&&!el.querySelector('.ui-icon'))el.insertAdjacentHTML('afterbegin',icon(n))});
+enhance();
+['stats','dashboardCards','cardsTable','txTable'].forEach(id=>{const el=document.getElementById(id);if(el)new MutationObserver(enhance).observe(el,{childList:true})});
 })();
 </script></body></html>
