@@ -212,6 +212,32 @@ th,td,.planner-item,.planner-section-head,.payoff-payment,.payoff-period-body{bo
 .tx-type-icon[data-type="purchase"],.tx-type-icon[data-type="fee"]{background:#304461;color:#e1edff}
 .tx-type-icon[data-type="interest"]{background:#34476b;color:#d9e6ff}
 @media(max-width:600px){.stat .stat-symbol{width:34px;height:34px;border-radius:10px}.stat .stat-symbol .ui-icon{width:20px;height:20px}.stat:nth-child(3) .stat-symbol{width:35px;height:35px;font-size:9px}.toolbar .ui-icon{width:16px;height:16px}.issuer-mark{min-height:30px;min-width:48px}}
+</style><style id="credit-card-rows-v11">
+/* Mobile-friendly compact account rows matching the supplied reference. */
+#cards .table-wrap{overflow:visible!important}
+#cards table,#cards tbody{display:block!important;width:100%!important}
+#cards table thead{display:none!important}
+#cards #cardsTable{display:grid!important;gap:6px!important}
+#cards #cardsTable tr{display:grid!important;grid-template-columns:62px minmax(0,1fr) auto 14px!important;grid-template-rows:auto auto!important;align-items:center!important;gap:2px 9px!important;background:linear-gradient(135deg,#193a60,#10233e)!important;border:1px solid #375b84!important;border-radius:13px!important;padding:9px 11px!important;min-height:65px!important;box-shadow:0 3px 9px #0003!important;position:relative}
+#cards #cardsTable td{display:none!important;padding:0!important;border:0!important;background:transparent!important;color:#f6f9ff!important;min-width:0!important}
+#cards #cardsTable td::before{display:none!important}
+#cards #cardsTable td[data-label="Card"]{display:flex!important;grid-column:1/3;grid-row:1/3;align-items:center;gap:9px;min-width:0}
+#cards #cardsTable td[data-label="Card"] .issuer-mark{flex:none;width:57px;min-width:57px;max-width:57px;height:38px;margin:0!important}
+#cards #cardsTable td[data-label="Card"] .card-identity{display:flex;flex-direction:column;gap:3px;min-width:0}
+#cards #cardsTable td[data-label="Card"] strong{font-size:13px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+#cards #cardsTable td[data-label="Card"] .card-subline{font-size:10px;color:#b8cbe3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cards #cardsTable td[data-label="Balance"]{display:block!important;grid-column:3;grid-row:1;justify-self:end;text-align:right;font-size:14px!important;font-weight:750;white-space:nowrap}
+#cards #cardsTable td[data-label="Minimum"]{display:block!important;grid-column:3;grid-row:2;justify-self:end;text-align:right;font-size:10px!important;color:#c6d8ee!important;white-space:nowrap}
+#cards #cardsTable td[data-label="Actions"]{display:flex!important;grid-column:4;grid-row:1/3;align-items:center;justify-content:center;position:static}
+#cards #cardsTable td[data-label="Actions"] .card-row-open{background:transparent;border:0;color:#fff;padding:3px;cursor:pointer;display:grid;place-items:center}
+#cards #cardsTable td[data-label="Actions"] .card-row-open svg{width:15px;height:15px}
+#cards #cardsTable tr .card-extra{grid-column:1/-1;display:none;padding:9px 3px 2px;border-top:1px solid #36577a;margin-top:6px}
+#cards #cardsTable tr.expanded .card-extra{display:block}
+#cards #cardsTable tr .card-extra .card-extra-details{display:flex;flex-wrap:wrap;gap:8px 15px;color:#c8d9ee;font-size:12px;margin-bottom:10px}
+#cards #cardsTable tr .card-extra button{border-radius:8px;padding:7px 13px;margin-right:7px;font-size:12px}
+#cards #cardsTable tr .card-extra .secondary{background:#244365!important}
+#cards #cardsTable tr .card-extra .danger{background:#68253a!important}
+@media(max-width:390px){#cards #cardsTable tr{grid-template-columns:52px minmax(0,1fr) auto 12px!important;gap:2px 6px!important;padding:8px!important}#cards #cardsTable td[data-label="Card"] .issuer-mark{width:48px;min-width:48px;max-width:48px}#cards #cardsTable td[data-label="Card"] strong{font-size:11px!important}#cards #cardsTable td[data-label="Balance"]{font-size:12px!important}}
 </style></head><body><header class="topbar"><div><h1>Credit Card Manager</h1><p>Track balances, interest, payments and payoff plans.</p></div><div class="toolbar"><button id="accountBtn" class="secondary">Sign In / Sync</button><button id="syncNowBtn" class="secondary" style="display:none">Sync Now</button><button id="openBtn" class="secondary">Open Database</button><button id="saveBtn" class="primary">Save Database</button><button id="importJsonBtn" class="secondary">Import JSON</button><button id="downloadBtn" class="secondary">Export JSON</button><input id="jsonFileInput" type="file" accept=".json,application/json" hidden></div></header><main><div id="status" class="status">Cloud sync: not signed in</div><section class="stats" id="stats"></section><div class="tabs"><button class="tab active" data-tab="dashboard"><span class="nav-icon">⌂</span>Dashboard</button><button class="tab" data-tab="cards"><span class="nav-icon">▣</span>Credit Cards</button><button class="tab" data-tab="transactions"><span class="nav-icon">⇄</span>Transactions</button><button class="tab" data-tab="payoff"><span class="nav-icon">▦</span>Payoff Calculator</button><button class="tab" data-tab="planner"><span class="nav-icon">▥</span>Income Planner</button></div><section id="dashboard" class="tab-panel active"><div class="panel"><div class="panel-head"><h2>Accounts</h2><button class="primary" id="addCardDash">+ Add Card</button></div><div id="dashboardCards" class="card-grid"></div></div></section><section id="cards" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Credit Cards</h2><button class="primary" id="addCardBtn">+ Add Card</button></div><div class="table-wrap"><table><thead><tr><th>Card</th><th>Balance</th><th>Limit</th><th>APR</th><th>Est. minimum</th><th>Due</th><th>Actions</th></tr></thead><tbody id="cardsTable"></tbody></table></div></div></section><section id="transactions" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Transactions</h2><button class="primary" id="addTxBtn">+ Add Transaction</button></div><div class="filters"><select id="txCardFilter"><option value="">All cards</option></select><select id="txTypeFilter"><option value="">All types</option><option value="purchase">Spending</option><option value="payment">Payment</option><option value="interest">Interest</option><option value="fee">Late fee / fee</option><option value="credit">Credit / adjustment</option></select></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Card</th><th>Type</th><th>Description</th><th>Amount</th><th>Balance After</th><th>Actions</th></tr></thead><tbody id="txTable"></tbody></table></div></div></section><section id="payoff" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Payoff Calculator</h2></div><div class="calculator-grid"><div><label>Payment frequency<select id="payoffFrequency"><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select></label><label>Total payment<input id="customPayment" type="number" min="0" step="0.01" placeholder="Use combined minimums"></label><label id="firstPaymentDateLabel">First payment date<input id="firstPaymentDate" type="date"></label><p class="muted payoff-note">Payments are applied to minimums first, then any remaining amount goes to the smallest balance. Cards are always shown from least balance to greatest.</p><button class="primary" id="calculateBtn" style="display:none" aria-hidden="true" tabindex="-1">Calculate Payoff</button></div><div id="payoffSummary" class="payoff-summary"></div></div><div class="payoff-schedule" id="amortizationTable"></div></div></section><section id="planner" class="tab-panel"><div class="panel"><div class="panel-head"><div><h2>Income Planner</h2><p class="muted planner-subtitle">Track recurring expenses and savings goals, then see the daily income needed to cover them.</p></div></div><div id="plannerSummary" class="planner-summary"></div><div class="planner-grid"><div class="planner-column"><div class="planner-section-head"><h3>Expenses</h3><button class="primary" id="addExpenseBtn" type="button" onclick="addExpense()">+ Add Expense</button></div><div id="expensesList" class="planner-list"></div></div><div class="planner-column"><div class="planner-section-head"><h3>Goals</h3><button class="primary" id="addGoalBtn" type="button" onclick="addGoal()">+ Add Goal</button></div><div id="goalsList" class="planner-list"></div></div></div></div></section></main><div class="modal hidden" id="modal"><div class="modal-box"><div class="modal-head"><h2 id="modalTitle"></h2><button class="icon" id="closeModal">×</button></div><form id="modalForm"></form></div></div><dialog id="authDialog"><form method="dialog" id="authForm"><h3>Sign in to sync</h3><p>Use the same account on your PC and iPhone.</p><label>Email<input id="authEmail" type="email" required></label><label>Password<input id="authPassword" type="password" minlength="6" required></label><div class="form-actions"><button type="button" class="secondary" id="closeAuthBtn">Cancel</button><button type="button" class="secondary" id="signUpBtn">Create Account</button><button>Sign In</button></div><p id="authMessage"></p><button type="button" class="danger" id="signOutBtn" style="display:none">Sign Out</button></form></dialog><div id="accountStatus" aria-live="polite"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app1.js?v=6"></script><script src="app2.js?v=11"></script><script src="app3.js?v=7"></script><script src="app5.js?v=2"></script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error))}</script><script>
 (function(){
 const bar=document.querySelector('.toolbar');if(!bar)return;
@@ -272,5 +298,35 @@ const status=document.querySelector('#status');if(status&&!status.querySelector(
 [['addCardDash','plus'],['addCardBtn','plus'],['addTxBtn','plus']].forEach(([id,n])=>{const el=document.getElementById(id);if(el&&!el.querySelector('.ui-icon'))el.insertAdjacentHTML('afterbegin',icon(n))});
 enhance();
 ['stats','dashboardCards','cardsTable','txTable'].forEach(id=>{const el=document.getElementById(id);if(el)new MutationObserver(enhance).observe(el,{childList:true})});
+})();
+</script><script id="credit-card-row-layout-v11">
+(function(){
+const body=document.getElementById('cardsTable');if(!body)return;
+function upgrade(){
+body.querySelectorAll('tr').forEach(tr=>{
+const card=tr.querySelector('td[data-label="Card"]'),balance=tr.querySelector('td[data-label="Balance"]'),minimum=tr.querySelector('td[data-label="Minimum"]'),actions=tr.querySelector('td[data-label="Actions"]');
+if(!card||!balance||!minimum||!actions||tr.dataset.compactReady)return;
+tr.dataset.compactReady='1';
+const title=card.querySelector('strong'),issuer=card.querySelector('.muted');
+const titleText=title?.textContent||'',issuerText=issuer?.textContent||'';
+const matching=(typeof sortedCards==='function'?sortedCards():[]).find(c=>c.name===titleText&&String(c.issuer||'')===issuerText);
+const due=matching?.dueDay?'Due: '+String(matching.dueDay).padStart(2,'0'):'Due: —';
+const mark=card.querySelector('.issuer-mark');
+const ident=document.createElement('span');ident.className='card-identity';
+if(title)ident.appendChild(title);
+const sub=document.createElement('span');sub.className='card-subline';sub.textContent=issuerText+' | '+due;ident.appendChild(sub);
+if(issuer)issuer.remove();card.appendChild(ident);
+const min=minimum.textContent.trim();minimum.textContent='Min: '+min;
+const edit=actions.querySelector('button.secondary'),del=actions.querySelector('button.danger');
+const extra=document.createElement('div');extra.className='card-extra';
+const details=document.createElement('div');details.className='card-extra-details';
+['Limit','APR','Due'].forEach(label=>{const td=tr.querySelector('td[data-label="'+label+'"]');if(td){const span=document.createElement('span');span.textContent=label+': '+td.textContent.trim();details.appendChild(span)}});
+extra.appendChild(details);if(edit)extra.appendChild(edit);if(del)extra.appendChild(del);
+const open=document.createElement('button');open.type='button';open.className='card-row-open';open.setAttribute('aria-label','Show details for '+titleText);open.setAttribute('aria-expanded','false');open.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 5 7 7-7 7"/></svg>';
+open.addEventListener('click',()=>{const active=tr.classList.toggle('expanded');open.setAttribute('aria-expanded',String(active));open.innerHTML=active?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 15 7-7 7 7"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 5 7 7-7 7"/></svg>'});
+actions.appendChild(open);tr.appendChild(extra);
+});
+}
+new MutationObserver(upgrade).observe(body,{childList:true});upgrade();
 })();
 </script></body></html>
