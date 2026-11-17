@@ -12,18 +12,18 @@ function calculatePayoff(){
   const now=new Date();now.setHours(12,0,0,0);
   const historical=[];
   const periodDays=frequency==='weekly'?7:null;
-  if(historyStart&&Number.isFinite(historyStart.getTime())&&historyStart<now){
+  if(historyStart&&Number.isFinite(historyStart.getTime())&&historyStart<=now){
     let cursor=new Date(historyStart),count=0;
-    while(cursor<now&&count<5200){
+    while(cursor<=now&&count<5200){
       const end=new Date(cursor);
       if(frequency==='weekly')end.setDate(end.getDate()+7);
       else end.setMonth(end.getMonth()+1);
-      const endExclusive=end<now?end:now;
+      const endExclusive=end;
       const iso=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
       const from=iso(cursor),until=iso(endExclusive);
       const entries=(data.cards||[]).flatMap(c=>(c.transactions||[]).filter(t=>t.type==='payment'&&t.date>=from&&t.date<until).map(t=>({card:c.name,amount:Math.max(0,Number(t.amount)||0),date:t.date,id:t.id})));
       const actual=entries.reduce((sum,t)=>sum+t.amount,0);
-      historical.push({period:++count,date:new Date(cursor),entries,actual,complete:end<=now});
+      if(end<=now||entries.length){historical.push({period:++count,date:new Date(cursor),entries,actual,complete:end<=now});}else break;
       cursor=end;
     }
   }
@@ -124,12 +124,12 @@ function calculatePayoff(){
   const word=frequency==='weekly'?'Week':'Month';
   const historyHtml=historical.map(g=>{
     const status=g.actual+0.005>=payment?'Paid':g.actual>0.005?'Partially paid':'Unpaid';
-    const recorded=g.entries.map(t=>'<div class="payoff-history-transaction"><strong>'+esc(t.card)+'</strong><span>'+esc(t.date)+'</span><strong>'+money(t.amount)+'</strong></div>').join('');
+    const recorded=g.entries.map(t=>'<div class="payoff-history-transaction" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #365576"><strong>'+esc(t.card)+'</strong><span>'+money(t.amount)+'</span><strong style="color:#5de6a0">Paid ✓</strong></div>').join('');
     return '<details class="payoff-period payoff-period-collapsible payoff-history-period">'+
       '<summary class="payoff-period-summary">'+
       '<span class="payoff-period-summary-item"><small>Period</small><strong>'+(frequency==='weekly'?'Week ':'Month ')+g.period+'</strong></span>'+
       '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
-      '<span class="payoff-period-summary-item"><small>Recorded payments</small><strong>'+money(g.actual)+'</strong></span>'+
+      '<span class="payoff-period-summary-item"><small>Remaining balance</small><strong>Recorded: '+money(g.actual)+'</strong></span>'+
       '<span class="payoff-period-summary-item"><small>Status</small><strong>'+status+'</strong></span>'+
       '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
       '<div class="payoff-period-body"><p>Recorded payments for this period. Target: '+money(payment)+'.</p>'+
