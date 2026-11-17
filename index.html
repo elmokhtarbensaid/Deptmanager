@@ -268,6 +268,39 @@ body:has(#dashboard.tab-panel.active) #stats{display:grid!important}
 /* Merge cloud status and account into one visually continuous banner. */
 #status:has(+ #syncAccountInline:not(:empty)){border-bottom:0!important;border-radius:16px 16px 0 0!important;padding-bottom:5px!important;margin-bottom:0!important}
 #syncAccountInline:not(:empty){display:block!important;background:#0c2c32!important;border:1px solid #19c777!important;border-top:0!important;border-radius:0 0 16px 16px!important;margin:0 0 16px!important;padding:0 16px 13px 56px!important;color:#a7dfc8!important;font-size:12px!important;text-align:left!important;line-height:1.4!important}
+</style><style id="transactions-compact-v21">
+#transactions .table-wrap{overflow:visible!important}
+#transactions table,#transactions tbody{display:block;width:100%}
+#transactions thead{display:none!important}
+#txTable{display:grid!important;gap:6px!important}
+#txTable tr.tx-compact-row{display:grid!important;grid-template-columns:1fr!important;background:linear-gradient(125deg,#18375a,#0e213c)!important;border:1px solid #294c75!important;border-radius:13px!important;overflow:hidden;cursor:pointer;min-height:51px}
+#txTable tr.tx-compact-row td.tx-main{display:flex!important;align-items:center;gap:10px;padding:7px 10px!important;border:0!important;min-width:0}
+#txTable tr.tx-compact-row td.tx-main:before,#txTable tr.tx-compact-row td.tx-expanded:before{display:none!important}
+#txTable .tx-row-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:11px;background:#304869;color:#e4f0ff}
+#txTable .tx-row-icon svg{width:23px;height:23px}
+#txTable .tx-icon-payment,#txTable .tx-icon-credit{background:#155d40;color:#6bff9e}
+#txTable .tx-row-copy{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+#txTable .tx-row-copy strong{font-size:12px!important;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+#txTable .tx-row-copy small{font-size:10px;color:#b4c8e2;line-height:1.2}
+#txTable .tx-row-amount{font-size:14px;white-space:nowrap;flex:none;color:#fff}
+#txTable .tx-row-amount.positive{color:#4ce78b!important}
+#txTable .tx-chevron{font-size:24px;color:#d7e9ff;line-height:1;transition:transform .15s}
+#txTable tr.expanded .tx-chevron{transform:rotate(90deg)}
+#txTable td.tx-expanded{display:none!important;border:0!important;border-top:1px solid #345477!important;padding:10px!important}
+#txTable tr.expanded td.tx-expanded{display:block!important}
+#txTable .tx-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:#9fb9d8}
+#txTable .tx-detail-grid span{display:flex;flex-direction:column;gap:3px;min-width:0}
+#txTable .tx-detail-grid strong{color:#fff;overflow-wrap:anywhere}
+#txTable .tx-row-actions{display:flex;gap:8px;margin-top:10px}
+#txTable .tx-row-actions button{padding:7px 13px;font-size:12px;border-radius:8px}
+#txTable tr.tx-empty{display:block}
+#transactions .filters.tx-pill-filters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+#transactions .tx-filter-pill{border:1px solid #29466b;border-radius:30px;background:#1a3557;color:#e4efff;padding:8px 12px;font-size:11px;white-space:nowrap;cursor:pointer}
+#transactions .tx-filter-pill.active{background:#0863e9;border-color:#0863e9;color:#fff}
+#transactions .tx-month-picker{margin-left:auto;width:auto!important;max-width:145px;border-radius:30px!important;padding:7px 8px!important;background:#1a3557!important;color:#fff!important;font-size:11px!important}
+#transactions .tx-card-select{width:100%;margin-top:6px;font-size:12px}
+#transactions #txTypeFilter{display:none!important}
+@media(max-width:400px){#transactions .tx-filter-pill{padding:7px 9px;font-size:10px}#transactions .tx-month-picker{max-width:122px;font-size:10px!important}#txTable .tx-row-copy strong{font-size:11px!important}#txTable .tx-row-amount{font-size:12px}}
 </style></head><body><header class="topbar"><div><h1>Credit Card Manager</h1><p>Track balances, interest, payments and payoff plans.</p></div><div class="toolbar"><button id="accountBtn" class="secondary">Sign In / Sync</button><button id="syncNowBtn" class="secondary" style="display:none">Sync Now</button><button id="openBtn" class="secondary">Open Database</button><button id="saveBtn" class="primary">Save Database</button><button id="importJsonBtn" class="secondary">Import JSON</button><button id="downloadBtn" class="secondary">Export JSON</button><input id="jsonFileInput" type="file" accept=".json,application/json" hidden></div></header><main><div id="status" class="status">Cloud sync: not signed in</div><div id="syncAccountInline" class="sync-account-inline" aria-live="polite"></div><section class="stats" id="stats"></section><div class="tabs"><button class="tab active" data-tab="dashboard"><span class="nav-icon">⌂</span>Dashboard</button><button class="tab" data-tab="cards"><span class="nav-icon">▣</span>Credit Cards</button><button class="tab" data-tab="transactions"><span class="nav-icon">⇄</span>Transactions</button><button class="tab" data-tab="payoff"><span class="nav-icon">▦</span>Payoff Calculator</button><button class="tab" data-tab="planner"><span class="nav-icon">▥</span>Income Planner</button></div><section id="dashboard" class="tab-panel active"><div class="panel"><div class="panel-head"><h2>Accounts</h2><button class="primary" id="addCardDash">+ Add Card</button></div><div id="dashboardCards" class="card-grid"></div></div></section><section id="cards" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Credit Cards</h2><button class="primary" id="addCardBtn">+ Add Card</button></div><div class="table-wrap"><table><thead><tr><th>Card</th><th>Balance</th><th>Limit</th><th>APR</th><th>Est. minimum</th><th>Due</th><th>Actions</th></tr></thead><tbody id="cardsTable"></tbody></table></div></div></section><section id="transactions" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Transactions</h2><button class="primary" id="addTxBtn">+ Add Transaction</button></div><div class="filters"><select id="txCardFilter"><option value="">All cards</option></select><select id="txTypeFilter"><option value="">All types</option><option value="purchase">Spending</option><option value="payment">Payment</option><option value="interest">Interest</option><option value="fee">Late fee / fee</option><option value="credit">Credit / adjustment</option></select></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Card</th><th>Type</th><th>Description</th><th>Amount</th><th>Balance After</th><th>Actions</th></tr></thead><tbody id="txTable"></tbody></table></div></div></section><section id="payoff" class="tab-panel"><div class="panel"><div class="panel-head"><h2>Payoff Calculator</h2></div><div class="calculator-grid"><div><label>Payment frequency<select id="payoffFrequency"><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select></label><label>Total payment<input id="customPayment" type="number" min="0" step="0.01" placeholder="Use combined minimums"></label><label id="firstPaymentDateLabel">First payment date<input id="firstPaymentDate" type="date"></label><p class="muted payoff-note">Payments are applied to minimums first, then any remaining amount goes to the smallest balance. Cards are always shown from least balance to greatest.</p><button class="primary" id="calculateBtn" style="display:none" aria-hidden="true" tabindex="-1">Calculate Payoff</button></div><div id="payoffSummary" class="payoff-summary"></div></div><div class="payoff-schedule" id="amortizationTable"></div></div></section><section id="planner" class="tab-panel"><div class="panel"><div class="panel-head"><div><h2>Income Planner</h2><p class="muted planner-subtitle">Track recurring expenses and savings goals, then see the daily income needed to cover them.</p></div></div><div id="plannerSummary" class="planner-summary"></div><div class="planner-grid"><div class="planner-column"><div class="planner-section-head"><h3>Expenses</h3><button class="primary" id="addExpenseBtn" type="button" onclick="addExpense()">+ Add Expense</button></div><div id="expensesList" class="planner-list"></div></div><div class="planner-column"><div class="planner-section-head"><h3>Goals</h3><button class="primary" id="addGoalBtn" type="button" onclick="addGoal()">+ Add Goal</button></div><div id="goalsList" class="planner-list"></div></div></div></div></section></main><div class="modal hidden" id="modal"><div class="modal-box"><div class="modal-head"><h2 id="modalTitle"></h2><button class="icon" id="closeModal">×</button></div><form id="modalForm"></form></div></div><dialog id="authDialog"><form method="dialog" id="authForm"><h3>Sign in to sync</h3><p>Use the same account on your PC and iPhone.</p><label>Email<input id="authEmail" type="email" required></label><label>Password<input id="authPassword" type="password" minlength="6" required></label><div class="form-actions"><button type="button" class="secondary" id="closeAuthBtn">Cancel</button><button type="button" class="secondary" id="signUpBtn">Create Account</button><button>Sign In</button></div><p id="authMessage"></p><button type="button" class="danger" id="signOutBtn" style="display:none">Sign Out</button></form></dialog><div id="accountStatus" aria-live="polite" style="display:none"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app1.js?v=6"></script><script src="app2.js?v=11"></script><script src="app3.js?v=7"></script><script src="app5.js?v=2"></script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error))}</script><script>
 (function(){
 const bar=document.querySelector('.toolbar');if(!bar)return;
@@ -398,5 +431,22 @@ if(!source||!target)return;
 function refresh(){const value=(source.textContent||'').trim();target.textContent=value.replace(/^Cloud sync:\s*/i,'Signed in: ');target.style.display=value?'block':'none'}
 new MutationObserver(refresh).observe(source,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['style','class']});
 refresh();
+})();
+</script><script id="transactions-filter-ui-v21">
+(function(){
+const root=document.querySelector('#transactions .filters'),type=document.getElementById('txTypeFilter'),card=document.getElementById('txCardFilter');if(!root||!type||!card)return;
+root.classList.add('tx-pill-filters');const labels=[['','All'],['payment','Payments'],['purchase','Charges'],['interest','Interest']];
+const pillBox=document.createElement('div');pillBox.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+labels.forEach(([value,label])=>{const b=document.createElement('button');b.type='button';b.className='tx-filter-pill'+(type.value===value?' active':'');b.textContent=label;b.addEventListener('click',()=>{type.value=value;type.dispatchEvent(new Event('change',{bubbles:true}));update()});pillBox.appendChild(b)});
+function update(){[...pillBox.children].forEach((b,i)=>b.classList.toggle('active',type.value===labels[i][0]))}
+const month=document.createElement('select');month.id='txMonthFilter';month.className='tx-month-picker';month.setAttribute('aria-label','Filter by month');
+function populate(){const old=month.value;const months=new Set();if(typeof data!=='undefined')for(const c of data.cards||[])for(const t of c.transactions||[])if(/^\\d{4}-\\d{2}/.test(t.date||''))months.add(t.date.slice(0,7));
+month.innerHTML='<option value="">All months</option>'+[...months].sort().reverse().map(m=>{const d=new Date(m+'-01T12:00:00');return '<option value="'+m+'">'+d.toLocaleDateString('en-US',{month:'short',year:'numeric'})+'</option>'}).join('');
+month.value=[...month.options].some(o=>o.value===old)?old:'';
+}
+month.addEventListener('change',()=>{if(typeof renderTransactions==='function')renderTransactions()});
+root.insertBefore(pillBox,card);root.insertBefore(month,card);card.classList.add('tx-card-select');
+type.addEventListener('change',update);
+populate();new MutationObserver(()=>{if(month.options.length<2)populate()}).observe(document.getElementById('txTable'),{childList:true});
 })();
 </script></body></html>
