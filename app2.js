@@ -65,7 +65,7 @@ function calculatePayoff(){
     lastMonth=month;lastYear=year;
   }
   const complete=!s.some(x=>x.bal>0.005), payoff=complete?(frequency==='weekly'?`${period} weeks (${(period/52).toFixed(1)} years)`:`${period} months (${(period/12).toFixed(1)} years)`):'>100 '+(frequency==='weekly'?'weeks':'years');
-  $('#payoffSummary').innerHTML=[['Starting debt',money(startDebt)],['Total payment',money(payment)+' / '+label],['Payoff time',payoff],['Estimated payoff',complete?date.toLocaleDateString():'—'],['Total interest',money(totalInterest)],['Total paid',money(totalPaid)]].map(x=>`<div class="summary-box"><small>${x[0]}</small><strong>${x[1]}</strong></div>`).join('');
+  $('#payoffSummary').innerHTML=[['Starting debt',money(startDebt)],['Total payment',money(payment)+' / '+label],['Payoff time',payoff],['Estimated payoff',complete?date.toLocaleDateString():'—'],['Total interest',money(totalInterest)],['Total paid',money(totalPaid)]].map(x=>`<div class="summary-box"><div class="payoff-metric-text"><small>${x[0]}</small><strong>${x[1]}</strong></div></div>`).join('');
   const groups=new Map();display.forEach(r=>{if(!groups.has(r.period))groups.set(r.period,{period:r.period,date:r.date,rows:[]});groups.get(r.period).rows.push(r)});
   const word=frequency==='weekly'?'Week':'Month';
   $('#amortizationTable').innerHTML=[...groups.values()].map(g=>{
