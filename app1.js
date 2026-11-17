@@ -40,11 +40,39 @@ function render(){
   renderTransactions(); calculatePayoff();
 }
 function renderTransactions(){
-  const cf=$('#txCardFilter').value,tf=$('#txTypeFilter').value,rows=[];
-  for(const c of data.cards||[]){if(cf&&c.id!==cf)continue;let running=0;for(const t of sortedTx(c)){running+=txSigned(t);if(tf&&t.type!==tf)continue;rows.push({...t,card:c.name,balanceAfter:Math.max(0,running)});}}
+  const cf=$('#txCardFilter').value,tf=$('#txTypeFilter').value,month=document.querySelector('#txMonthFilter')?.value||'',rows=[];
+  for(const c of data.cards||[]){if(cf&&c.id!==cf)continue;let running=0;for(const t of sortedTx(c)){running+=txSigned(t);if(tf&&t.type!==tf)continue;if(month&&!String(t.date||'').startsWith(month))continue;rows.push({...t,card:c.name,balanceAfter:Math.max(0,running)});}}
   rows.sort((a,b)=>b.date.localeCompare(a.date));
-  $('#txTable').innerHTML=rows.length?rows.map(t=>`<tr><td data-label="Date">${esc(t.date)}</td><td data-label="Card">${esc(t.card)}</td><td data-label="Type">${esc(t.type)}</td><td data-label="Description">${esc(t.description||'')}</td><td data-label="Amount" class="${['payment','credit'].includes(t.type)?'positive':''}">${money(t.amount)}</td><td data-label="Balance After">${money(t.balanceAfter)}</td><td data-label="Actions" class="actions"><button class="secondary" onclick="editTx('${t.card}','${t.id}')">Edit</button><button class="danger" onclick="deleteTx('${t.card}','${t.id}')">Delete</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">No transactions.</td></tr>';
+  const tbody=$('#txTable');
+  if(!rows.length){tbody.innerHTML='<tr class="tx-empty"><td colspan="7" class="empty">No transactions match these filters.</td></tr>';return}
+  const icons={
+    payment:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
+    credit:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="m9 12 2 2 4-4"/>',
+    purchase:'<circle cx="9" cy="20" r="1"/><circle cx="19" cy="20" r="1"/><path d="M2 3h2l3 13h13l2-9H5"/>',
+    interest:'<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M19 5 5 19"/>',
+    fee:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>'
+  };
+  const svg=type=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(icons[type]||icons.fee)+'</svg>';
+  const formatDate=date=>{const d=new Date(String(date)+'T12:00:00');return Number.isNaN(d.getTime())?date:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+  tbody.innerHTML=rows.map(t=>{
+    const positive=['payment','credit'].includes(t.type);
+    const type=t.type==='purchase'?'Purchase':t.type==='credit'?'Credit':t.type==='fee'?'Fee':t.type.charAt(0).toUpperCase()+t.type.slice(1);
+    const label=type+' – '+(t.description||t.card);
+    const id=String(t.id).replace(/[^a-zA-Z0-9_-]/g,'');
+    return '<tr class="tx-compact-row" data-tx-id="'+esc(id)+'" tabindex="0" role="button" aria-expanded="false" aria-label="Show details for '+esc(label)+'">'+
+      '<td class="tx-main" colspan="7"><span class="tx-row-icon tx-icon-'+esc(t.type)+'">'+svg(t.type)+'</span><span class="tx-row-copy"><strong>'+esc(label)+'</strong><small>'+esc(formatDate(t.date))+'</small></span><strong class="tx-row-amount '+(positive?'positive':'')+'">'+(positive?'-':'')+money(t.amount)+'</strong><span class="tx-chevron" aria-hidden="true">›</span></td>'+
+      '<td class="tx-expanded" colspan="7"><div class="tx-detail-grid"><span>Card <strong>'+esc(t.card)+'</strong></span><span>Type <strong>'+esc(type)+'</strong></span><span>Balance after <strong>'+money(t.balanceAfter)+'</strong></span><span>Date <strong>'+esc(formatDate(t.date))+'</strong></span></div><div class="tx-row-actions"><button type="button" class="secondary" data-tx-action="edit">Edit</button><button type="button" class="danger" data-tx-action="delete">Delete</button></div></td></tr>';
+  }).join('');
+  tbody.querySelectorAll('.tx-compact-row').forEach((tr,i)=>{
+    const t=rows[i];
+    function toggle(){const open=tr.classList.toggle('expanded');tr.setAttribute('aria-expanded',String(open))}
+    tr.querySelector('.tx-main').addEventListener('click',toggle);
+    tr.addEventListener('keydown',e=>{if(e.target===tr&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggle()}});
+    tr.querySelector('[data-tx-action="edit"]').addEventListener('click',e=>{e.stopPropagation();editTx(t.card,t.id)});
+    tr.querySelector('[data-tx-action="delete"]').addEventListener('click',e=>{e.stopPropagation();deleteTx(t.card,t.id)});
+  });
 }
+
 function showModal(title,body){$('#modalTitle').textContent=title;$('#modalForm').innerHTML=body;$('#modal').classList.remove('hidden')}
 function closeModal(){$('#modal').classList.add('hidden')}
 function cardForm(c={}){return `<div class="form-grid"><div class="form-field"><label>Card name<input name="name" required value="${esc(c.name||'')}"></label></div><div class="form-field"><label>Issuer<input name="issuer" value="${esc(c.issuer||'')}"></label></div><div class="form-field"><label>Starting balance<input name="startingBalance" type="number" min="0" step=".01" value="${c.startingBalance??0}"></label></div><div class="form-field"><label>Credit limit<input name="creditLimit" type="number" min="0" step=".01" required value="${c.creditLimit??''}"></label></div><div class="form-field"><label>APR (%)<input name="apr" type="number" min="0" step=".01" required value="${c.apr??''}"></label></div><div class="form-field"><label>Due day (1-31)<input name="dueDay" type="number" min="1" max="31" value="${c.dueDay??''}"></label></div><div class="form-field"><label>Statement closing day<input name="closingDay" type="number" min="1" max="31" value="${c.closingDay??''}"></label></div></div><div class="form-actions"><button type="button" class="secondary" onclick="closeModal()">Cancel</button><button class="primary">Save Card</button></div>`}
