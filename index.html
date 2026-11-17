@@ -440,7 +440,7 @@ const pillBox=document.createElement('div');pillBox.style.cssText='display:flex;
 labels.forEach(([value,label])=>{const b=document.createElement('button');b.type='button';b.className='tx-filter-pill'+(type.value===value?' active':'');b.textContent=label;b.addEventListener('click',()=>{type.value=value;type.dispatchEvent(new Event('change',{bubbles:true}));update()});pillBox.appendChild(b)});
 function update(){[...pillBox.children].forEach((b,i)=>b.classList.toggle('active',type.value===labels[i][0]))}
 const month=document.createElement('select');month.id='txMonthFilter';month.className='tx-month-picker';month.setAttribute('aria-label','Filter by month');
-function populate(){const old=month.value;const months=new Set();if(typeof data!=='undefined')for(const c of data.cards||[])for(const t of c.transactions||[])if(/^\\d{4}-\\d{2}/.test(t.date||''))months.add(t.date.slice(0,7));
+function populate(){const old=month.value;const months=new Set();if(typeof data!=='undefined')for(const c of data.cards||[])for(const t of c.transactions||[])if(/^\d{4}-\d{2}/.test(t.date||''))months.add(t.date.slice(0,7));
 month.innerHTML='<option value="">All months</option>'+[...months].sort().reverse().map(m=>{const d=new Date(m+'-01T12:00:00');return '<option value="'+m+'">'+d.toLocaleDateString('en-US',{month:'short',year:'numeric'})+'</option>'}).join('');
 month.value=[...month.options].some(o=>o.value===old)?old:'';
 }
