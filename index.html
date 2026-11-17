@@ -343,4 +343,22 @@ open.addEventListener('click',()=>tr.setAttribute('aria-expanded',String(tr.clas
 }
 new MutationObserver(upgrade).observe(body,{childList:true});upgrade();
 })();
+</script><style id="real-bank-logo-assets-v13">
+.issuer-mark:has(.bank-logo-img){padding:3px!important;background:#fff!important;border:1px solid #57769a!important;overflow:hidden!important}
+.issuer-mark .bank-logo-img{display:block;width:100%;height:100%;max-height:31px;object-fit:contain}
+.account-card .issuer-mark:has(.bank-logo-img){width:64px;height:40px}
+</style>
+<script id="real-bank-logo-assets-script-v13">
+(function(){
+const logos={'capital':'capital-one','citi':'citi','truist':'truist','ollo':'ollo','apple':'apple','mercury':'mercury','chase':'chase'};
+function refresh(){document.querySelectorAll('.issuer-mark[data-issuer]').forEach(el=>{
+if(el.dataset.logoChecked)return;
+const name=logos[el.dataset.issuer];if(!name)return;
+el.dataset.logoChecked='1';const fallback=el.innerHTML;
+const img=document.createElement('img');img.className='bank-logo-img';img.alt=el.getAttribute('aria-label')||name;img.src='assets/bank-logos/'+name+'.webp';
+img.onerror=()=>{el.innerHTML=fallback;el.dataset.logoChecked='missing'};
+img.onload=()=>{el.replaceChildren(img)};
+})}
+const root=document.body;new MutationObserver(refresh).observe(root,{childList:true,subtree:true});refresh();
+})();
 </script></body></html>
