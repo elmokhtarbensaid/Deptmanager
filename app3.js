@@ -86,7 +86,33 @@ async function saveFile(){saveLocal();if(user){await saveCloud()}else{download()
 function download(){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="credit-card-manager.json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function loadLocalOrStarter(){try{const saved=localStorage.getItem("creditCardManagerDatabaseV2");if(saved){data=JSON.parse(saved);normalize();databaseReady=true;render();if(typeof renderPlanner==="function")renderPlanner();setStatus("Local database loaded. Sign in to sync across devices.",true);return}}catch(e){console.warn(e)}fetch("data.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(json=>{data=json;normalize();databaseReady=true;render();if(typeof renderPlanner==="function")renderPlanner();setStatus("Database ready. Sign in to sync across devices.",true)}).catch(e=>{data=structuredClone(DEFAULT);render();if(typeof renderPlanner==="function")renderPlanner();setStatus("Ready. Sign in to create your cloud database.",true)})}
 
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("#"+b.dataset.tab).classList.add("active")});
+// Remember interface preferences on this device, separate from financial cloud data.
+const UI_PREFS_KEY="creditCardManagerUiPreferencesV1";
+function readUiPrefs(){try{const p=JSON.parse(localStorage.getItem(UI_PREFS_KEY)||"{}");return p&&typeof p==="object"?p:{}}catch(e){return {}}}
+function saveUiPrefs(){try{localStorage.setItem(UI_PREFS_KEY,JSON.stringify({
+  tab:document.querySelector(".tab.active")?.dataset.tab||"dashboard",
+  frequency:$("#payoffFrequency").value,
+  payment:$("#customPayment").value,
+  startDate:$("#firstPaymentDate").value
+}))}catch(e){console.warn("Could not save UI preferences:",e)}}
+function activateSavedTab(name){
+  const button=Array.from(document.querySelectorAll(".tab")).find(b=>b.dataset.tab===name);
+  const panel=button&&document.getElementById(name);
+  if(!button||!panel)return;
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));
+  button.classList.add("active");panel.classList.add("active");
+}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{activateSavedTab(b.dataset.tab);saveUiPrefs()});
+(function restoreUiPrefs(){
+  const p=readUiPrefs();
+  if(["weekly","monthly"].includes(p.frequency))$("#payoffFrequency").value=p.frequency;
+  if(typeof p.payment==="string"&&p.payment!==""&&Number.isFinite(Number(p.payment))&&Number(p.payment)>=0)$("#customPayment").value=p.payment;
+  if(typeof p.startDate==="string"&&/^\\d{4}-\\d{2}-\\d{2}$/.test(p.startDate))$("#firstPaymentDate").value=p.startDate;
+  if(typeof p.tab==="string")activateSavedTab(p.tab);
+  ["change","input"].forEach(event=>["payoffFrequency","customPayment","firstPaymentDate"].forEach(id=>document.getElementById(id)?.addEventListener(event,saveUiPrefs)));
+  calculatePayoff();
+})();
 $("#openBtn").onclick=openFile;
 $("#saveBtn").onclick=saveFile;
 $("#downloadBtn").onclick=download;
