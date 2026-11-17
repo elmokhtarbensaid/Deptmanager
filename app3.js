@@ -108,7 +108,7 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{activateSavedTab(b.d
   const p=readUiPrefs();
   if(["weekly","monthly"].includes(p.frequency))$("#payoffFrequency").value=p.frequency;
   if(typeof p.payment==="string"&&p.payment!==""&&Number.isFinite(Number(p.payment))&&Number(p.payment)>=0)$("#customPayment").value=p.payment;
-  if(typeof p.startDate==="string"&&/^\\d{4}-\\d{2}-\\d{2}$/.test(p.startDate))$("#firstPaymentDate").value=p.startDate;
+  if(typeof p.startDate==="string"&&/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(p.startDate))$("#firstPaymentDate").value=p.startDate;
   if(typeof p.tab==="string")activateSavedTab(p.tab);
   ["change","input"].forEach(event=>["payoffFrequency","customPayment","firstPaymentDate"].forEach(id=>document.getElementById(id)?.addEventListener(event,saveUiPrefs)));
   calculatePayoff();
