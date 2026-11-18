@@ -177,6 +177,51 @@ function calculatePayoff(){
     }).join('');
     const target=payoffBudget(frequency,g.period,payment);
     const fullyPaid=g.actual+0.005>=target;
+    const unallocated=Math.max(0,Math.round((target-g.actual)*100)/100);
+    // Only recommend an additional payment for the active period; past periods are history.
+    let extraSuggestion='';
+    if(unallocated>0.005&&g.date<=now&&now<endExclusive){
+      const nextPayday=new Date(endExclusive);
+      const candidates=cards.map(c=>{
+        const outstanding=balance(c);
+        const dueDay=Number(c.dueDay);
+        if(outstanding<=0.005)return null;
+        if(!(dueDay>=1&&dueDay<=31))return {card:c,bal:outstanding,due:null,needed:0,missing:true};
+        let due=dueDateForMonth(now.getFullYear(),now.getMonth(),dueDay);
+        if(due<now)due=dueDateForMonth(now.getFullYear(),now.getMonth()+1,dueDay);
+        const prev=dueDateForMonth(due.getFullYear(),due.getMonth()-1,dueDay);
+        const paid=(c.transactions||[]).filter(t=>t.type==='payment'&&t.date>isoDate(prev)&&t.date<=isoDate(now)).reduce((sum,t)=>sum+Math.max(0,Number(t.amount)||0),0);
+        return {card:c,bal:outstanding,due,needed:Math.max(0,cardMinimum(c)-paid),missing:false};
+      }).filter(Boolean);
+      const urgent=candidates.filter(x=>x.due&&x.due<nextPayday&&x.needed>0.005).sort((a,b)=>a.due-b.due);
+      const allocations=[];
+      let available=unallocated;
+      for(const x of urgent){
+        if(available<=0.005)break;
+        const amount=Math.min(available,x.needed,x.bal);
+        if(amount<=0.005)continue;
+        allocations.push({name:x.card.name,amount,reason:'Minimum due '+x.due.toLocaleDateString('en-US',{month:'short',day:'numeric'})});
+        available=Math.max(0,available-amount);
+      }
+      if(available>0.005){
+        const ranked=candidates.filter(x=>x.bal>0.005).sort((a,b)=>{
+          const as=a.bal<150?0:1,bs=b.bal<150?0:1;
+          return as-bs||(as===0?a.bal-b.bal:Number(b.card.apr||0)-Number(a.card.apr||0));
+        });
+        for(const x of ranked){
+          if(available<=0.005)break;
+          const already=allocations.filter(a=>a.name===x.card.name).reduce((sum,a)=>sum+a.amount,0);
+          const amount=Math.min(available,Math.max(0,x.bal-already));
+          if(amount<=0.005)continue;
+          allocations.push({name:x.card.name,amount,reason:x.bal<150?'Small balance payoff':'Highest APR remaining'});
+          available=Math.max(0,available-amount);
+        }
+      }
+      extraSuggestion='<div class="payoff-extra-suggestion" style="margin:14px 0 4px;padding:14px;border:1px solid #d5a84a;border-radius:12px;background:rgba(255,209,102,.09)">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><strong style="color:#ffe1a1">Remaining budget to allocate</strong><strong style="color:#ffe1a1">'+money(unallocated)+'</strong></div>'+
+        (allocations.length?'<div style="margin-top:10px;font-weight:700">Suggested additional payment'+(allocations.length>1?'s':'')+':</div>'+allocations.map(a=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.14)"><span><strong>'+esc(a.name)+'</strong><small style="display:block;color:#e4cf9d">'+esc(a.reason)+'</small></span><strong style="color:#83e9ba">'+money(a.amount)+'</strong></div>').join(''):'<div style="margin-top:8px">No eligible outstanding card balance found.</div>')+
+        '<small style="display:block;margin-top:10px;color:#e4cf9d">Suggestions only — not recorded as paid. Confirm statement minimums and processing deadlines before sending payments.</small></div>';
+    }
     const periodStyle=fullyPaid
       ?'background:linear-gradient(120deg,#145348 0%,#10463e 55%,#0c3834 100%) !important;background-color:#10463e !important;border:1px solid #31b78a !important;box-shadow:inset 0 1px 0 rgba(149,255,204,.12) !important'
       :g.actual>0.005
@@ -189,7 +234,7 @@ function calculatePayoff(){
       '<span class="payoff-period-summary-item"><small>Remaining balance</small><strong>'+money(historicalRemaining)+'</strong></span>'+
       '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
       '<div class="payoff-period-body"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 4px 14px"><span>Payment budget: <strong>'+money(target)+'</strong></span><span style="color:'+(fullyPaid?'#83e9ba':'#f3ce7b')+';font-weight:700">Recorded: '+money(g.actual)+'</span></div>'+
-      (recorded||'<div class="empty">No payments recorded in this period.</div>')+'</div></details>';
+      (recorded||'<div class="empty">No payments recorded in this period.</div>')+extraSuggestion+'</div></details>';
   }).join('');
   $('#amortizationTable').innerHTML=warningsHtml+historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
