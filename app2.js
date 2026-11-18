@@ -193,7 +193,7 @@ function calculatePayoff(){
   }).join('');
   $('#amortizationTable').innerHTML=warningsHtml+historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
-    const rows=g.rows.map(x=>{
+    const rows=g.rows.filter(x=>x.payment>0.005).map(x=>{
       return '<details class="payoff-payment"><summary><div class="payoff-main-row">'+
         '<div class="payoff-card-name"><strong>'+esc(x.card)+'</strong></div>'+
         '<div class="payoff-main-value"><span>Payment</span><strong>'+money(x.payment)+'</strong></div>'+
