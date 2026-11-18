@@ -167,6 +167,7 @@ function calculatePayoff(){
     };
     // Reserve only the amount that cannot safely wait for later paydays.
     // Use cumulative deadlines so several cards share the same future budget.
+    const protectedPayments=new Map();
     let cumulativeDue=0,committedNow=0;
     for(const x of obligations){
       const outstanding=Math.max(0,Math.min(x.bal,x.min-x.paidMin));
@@ -191,6 +192,7 @@ function calculatePayoff(){
       if(v>0.005){
         x.bal-=v;x.paidMin+=v;rem-=v;totalPaid+=v;committedNow+=v;
         paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
+        protectedPayments.set(x.card.id,(protectedPayments.get(x.card.id)||0)+v);
       }
       if(x.nextDue<nextPayDate&&v+0.005<outstanding){
         dueWarnings.push(x.card.name+': '+money(outstanding-v)+' minimum shortfall by '+isoDate(x.nextDue));
@@ -225,6 +227,30 @@ function calculatePayoff(){
         x.bal-=v;rem-=v;totalPaid+=v;
         x.paidMin=Math.min(x.min,x.paidMin+v);
         paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
+      }
+    }
+    // Consolidate mandatory sub-$25 payments after avalanche allocation.
+    // Move only optional extra money from another card, never a manual override
+    // or a minimum reserved for its own deadline.
+    for(const recipient of s.filter(x=>!fixedIds.has(x.card.id)&&(paid.get(x.card.id)||0)>0.005&&(paid.get(x.card.id)||0)<24.995)){
+      let need=Math.min(25-(paid.get(recipient.card.id)||0),recipient.bal);
+      if(need<=0.005)continue;
+      const donors=s.filter(x=>x!==recipient&&!fixedIds.has(x.card.id)&&(paid.get(x.card.id)||0)>25.005)
+        .sort((a,b)=>Number(a.card.apr||0)-Number(b.card.apr||0));
+      for(const donor of donors){
+        if(need<=0.005)break;
+        const original=paid.get(donor.card.id)||0;
+        const protectedAmount=protectedPayments.get(donor.card.id)||0;
+        const transferable=Math.max(0,original-Math.max(25,protectedAmount));
+        const move=Math.min(need,transferable);
+        if(move<=0.005)continue;
+        paid.set(donor.card.id,Math.round((original-move)*100)/100);
+        donor.bal+=move;
+        donor.paidMin=Math.max(0,donor.paidMin-move);
+        paid.set(recipient.card.id,Math.round(((paid.get(recipient.card.id)||0)+move)*100)/100);
+        recipient.bal-=move;
+        recipient.paidMin=Math.min(recipient.min,recipient.paidMin+move);
+        need-=move;
       }
     }
     for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=x.nextDue?new Date(x.nextDue):(d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date));let recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,cardId:x.card.id,start:st,interest:v,payment:p,end:x.bal})}}
