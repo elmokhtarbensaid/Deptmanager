@@ -181,6 +181,18 @@ function calculatePayoff(){
         date=dueDateForMonth(date.getFullYear(),date.getMonth()+1,anchorDay);
       }
     }
+    // Roll each card's billing cycle forward BEFORE applying today's payments.
+    // A payment on or after the prior due date belongs to the next cycle.
+    for(const x of s.filter(x=>x.nextDue)){
+      while(x.nextDue<date){
+        if(x.bal>0.005&&x.paidMin+0.005<x.min)dueWarnings.push(x.card.name+': '+money(x.min-x.paidMin)+' short by '+isoDate(x.nextDue));
+        x.paidMin=0;
+        x.nextDue=dueDateForMonth(x.nextDue.getFullYear(),x.nextDue.getMonth()+1,Number(x.card.dueDay));
+        const nextKey=String(x.card.id)+'|'+isoDate(x.nextDue);
+        x.min=Number(data?.minimumAmountOverrides?.[nextKey]??cardMinimum(x.card,x.bal));
+        if(data?.minimumCycleOverrides?.[nextKey]===true)x.paidMin=x.min;
+      }
+    }
     const month=date.getMonth(),year=date.getFullYear(),newMonth=month!==lastMonth||year!==lastYear;
     const start=new Map(s.map(x=>[x.card.id,x.bal])), interest=new Map(s.map(x=>[x.card.id,0])), paid=new Map(s.map(x=>[x.card.id,0]));
     if(frequency==='monthly'||newMonth){
@@ -207,16 +219,6 @@ function calculatePayoff(){
     const nextPayDate=new Date(date);
     if(frequency==='weekly')nextPayDate.setDate(nextPayDate.getDate()+7);
     else nextPayDate.setMonth(nextPayDate.getMonth()+1);
-    for(const x of s.filter(x=>x.nextDue)){
-      while(x.nextDue<date){
-        if(x.bal>0.005&&x.paidMin+0.005<x.min)dueWarnings.push(x.card.name+': '+money(x.min-x.paidMin)+' short by '+isoDate(x.nextDue));
-        x.paidMin=0;
-        x.nextDue=dueDateForMonth(x.nextDue.getFullYear(),x.nextDue.getMonth()+1,Number(x.card.dueDay));
-        const nextKey=String(x.card.id)+'|'+isoDate(x.nextDue);
-        if(Object.prototype.hasOwnProperty.call(data?.minimumAmountOverrides||{},nextKey))x.min=Number(data.minimumAmountOverrides[nextKey]);
-        if(data?.minimumCycleOverrides?.[nextKey]===true)x.paidMin=x.min;
-      }
-    }
     // Consolidate minimum payments: pay a card when its deadline requires it,
     // or earlier only when future payment budgets cannot cover all due minimums.
     const obligations=s.filter(x=>x.bal>0.005&&x.nextDue&&!fixedIds.has(x.card.id)).sort((a,b)=>a.nextDue-b.nextDue);
@@ -259,9 +261,8 @@ function calculatePayoff(){
         paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
         protectedPayments.set(x.card.id,(protectedPayments.get(x.card.id)||0)+v);
       }
-      if(x.nextDue<nextPayDate&&v+0.005<outstanding){
-        dueWarnings.push(x.card.name+': '+money(outstanding-v)+' minimum shortfall by '+isoDate(x.nextDue));
-      }
+      // Do not warn before all allocations for this period have been applied.
+      // The final due-date check at cycle rollover is authoritative.
     }
     // Only use remaining funds to clear small balances.
     for(const x of s.filter(x=>x.bal>0.005&&x.bal<150&&!fixedIds.has(x.card.id)).sort((a,b)=>a.bal-b.bal)){
@@ -319,6 +320,13 @@ function calculatePayoff(){
       }
     }
     for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=x.nextDue?new Date(x.nextDue):(d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date));let recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,cardId:x.card.id,start:st,interest:v,payment:p,end:x.bal})}}
+    // Reconcile minimums with the FINAL payment total for this period.
+    for(const x of s.filter(x=>x.nextDue&&x.nextDue<nextPayDate&&x.bal>0.005)){
+      if(x.paidMin+0.005<x.min){
+        const message=x.card.name+': '+money(x.min-x.paidMin)+' short by '+isoDate(x.nextDue);
+        if(!dueWarnings.includes(message))dueWarnings.push(message);
+      }
+    }
     lastMonth=month;lastYear=year;
   }
   const pastCount=historical.length;
