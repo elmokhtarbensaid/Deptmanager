@@ -138,7 +138,20 @@ function calculatePayoff(){
   const groups=new Map();display.forEach(r=>{const key=r.period+pastCount;if(!groups.has(key))groups.set(key,{period:key,date:r.date,rows:[]});groups.get(key).rows.push(r)});
   const word=frequency==='weekly'?'Week':'Month';
   const historyHtml=historical.map(g=>{
-    const recorded=g.entries.map(t=>'<div class="payoff-history-transaction" style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #365576"><strong>'+esc(t.card)+'</strong><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>').join('');
+    const recorded=g.entries.map(t=>{
+      const paidDate=new Date(t.date+'T12:00:00');
+      const dateText=Number.isFinite(paidDate.getTime())?paidDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):esc(t.date);
+      return '<details class="payoff-payment payoff-recorded-payment"><summary><div class="payoff-main-row">'+
+        '<div class="payoff-card-name"><strong>'+esc(t.card)+'</strong></div>'+
+        '<div class="payoff-main-value"><span>Payment</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
+        '<div class="payoff-main-value"><span>Paid on</span><strong>'+dateText+'</strong></div>'+
+        '<div class="payoff-details-label">Details <span>▾</span></div>'+
+        '</div></summary><div class="payoff-details">'+
+        '<div><span>Card</span><strong>'+esc(t.card)+'</strong></div>'+
+        '<div><span>Payment date</span><strong>'+dateText+'</strong></div>'+
+        '<div><span>Recorded payment</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
+        '</div></details>';
+    }).join('');
     const target=payoffBudget(frequency,g.period,payment);
     const fullyPaid=g.actual+0.005>=target;
     const periodStyle=fullyPaid
@@ -152,7 +165,7 @@ function calculatePayoff(){
       '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
       '<span class="payoff-period-summary-item"><small>Recorded payments</small><strong>'+money(g.actual)+'</strong></span>'+
       '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
-      '<div class="payoff-period-body"><p>Recorded payments for this period. Target: '+money(payoffBudget(frequency,g.period,payment))+'.</p>'+
+      '<div class="payoff-period-body"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 4px 14px"><span>Payment budget: <strong>'+money(target)+'</strong></span><span style="color:'+(fullyPaid?'#83e9ba':'#f3ce7b')+';font-weight:700">Recorded: '+money(g.actual)+'</span></div>'+
       (recorded||'<div class="empty">No payments recorded in this period.</div>')+'</div></details>';
   }).join('');
   $('#amortizationTable').innerHTML=historyHtml+[...groups.values()].map(g=>{
