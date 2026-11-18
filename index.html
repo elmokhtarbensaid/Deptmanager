@@ -586,13 +586,9 @@ tr.dataset.compactReady='1';
 const title=card.querySelector('strong'),issuer=card.querySelector('.muted');
 const titleText=title?.textContent||'',issuerText=issuer?.textContent||'';
 const matching=(typeof sortedCards==='function'?sortedCards():[]).find(c=>c.name===titleText&&String(c.issuer||'')===issuerText);
-if(matching&&typeof balance==='function'&&balance(matching)<0.005){
+if(matching&&typeof window.balance==='function'&&window.balance(matching)<=0.005){
   tr.classList.add('card-paid-in-full');
   tr.setAttribute('data-payment-status','paid-in-full');
-  const paidLabel=document.createElement('span');
-  paidLabel.className='card-paid-label';
-  paidLabel.textContent='✓ Paid in Full';
-  card.appendChild(paidLabel);
 }
 const due=matching?.dueDay?'Due: '+String(matching.dueDay).padStart(2,'0'):'Due: —';
 const mark=card.querySelector('.issuer-mark');
