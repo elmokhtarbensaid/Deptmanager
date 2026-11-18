@@ -192,7 +192,7 @@ function calculatePayoff(){
     const previous=dueDateForMonth(due.getFullYear(),due.getMonth()-1,day);
     const cycle=payoffCurrentCycle(x.card,today);
     x.min=cycle?.minimum??x.min;
-    x.paidMin=cycle?.satisfied?x.min:Math.min(x.min,cycle?.paid||0);
+    x.paidMin=cycle?.satisfied?x.min:Math.min(x.min,cycle?.statement?cycle.bankPaid:0);
     if(date>due&&x.min-x.paidMin>0.005)dueWarnings.push(x.card.name+': next payday is after '+isoDate(due));
   }
   while(s.some(x=>x.bal>0.005)&&period<max){
