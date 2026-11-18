@@ -138,15 +138,24 @@ function calculatePayoff(){
   const groups=new Map();display.forEach(r=>{const key=r.period+pastCount;if(!groups.has(key))groups.set(key,{period:key,date:r.date,rows:[]});groups.get(key).rows.push(r)});
   const word=frequency==='weekly'?'Week':'Month';
   const historyHtml=historical.map(g=>{
+    const endExclusive=new Date(g.date);
+    if(frequency==='weekly')endExclusive.setDate(endExclusive.getDate()+7);
+    else endExclusive.setMonth(endExclusive.getMonth()+1);
+    const endISO=[endExclusive.getFullYear(),String(endExclusive.getMonth()+1).padStart(2,'0'),String(endExclusive.getDate()).padStart(2,'0')].join('-');
+    // Reconstruct the ledger balance at period end from current balances and later transactions.
+    const historicalRemaining=(data.cards||[]).reduce((sum,c)=>{
+      const futureDelta=(c.transactions||[]).filter(t=>t.date>=endISO).reduce((v,t)=>v+txSigned(t),0);
+      return sum+Math.max(0,balance(c)-futureDelta);
+    },0);
     const recorded=g.entries.map(t=>{
       const paidDate=new Date(t.date+'T12:00:00');
       const dateText=Number.isFinite(paidDate.getTime())?paidDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):esc(t.date);
-      return '<details class="payoff-payment payoff-recorded-payment"><summary><div class="payoff-main-row">'+
+      return '<details class="payoff-payment payoff-recorded-payment" style="background:transparent !important;background-color:transparent !important"><summary style="background:transparent !important;background-color:transparent !important"><div class="payoff-main-row">'+
         '<div class="payoff-card-name"><strong>'+esc(t.card)+'</strong></div>'+
         '<div class="payoff-main-value"><span>Payment</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
         '<div class="payoff-main-value"><span>Paid on</span><strong>'+dateText+'</strong></div>'+
         '<div class="payoff-details-label">Details <span>▾</span></div>'+
-        '</div></summary><div class="payoff-details">'+
+        '</div></summary><div class="payoff-details" style="background:transparent !important;background-color:transparent !important">'+
         '<div><span>Card</span><strong>'+esc(t.card)+'</strong></div>'+
         '<div><span>Payment date</span><strong>'+dateText+'</strong></div>'+
         '<div><span>Recorded payment</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
@@ -163,7 +172,7 @@ function calculatePayoff(){
       '<summary class="payoff-period-summary" style="background:transparent !important;background-color:transparent !important;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1.5fr) auto;align-items:center">'+
       '<span class="payoff-period-summary-item"><small>Period</small><strong>'+(frequency==='weekly'?'Week ':'Month ')+g.period+'</strong></span>'+
       '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
-      '<span class="payoff-period-summary-item"><small>Recorded payments</small><strong>'+money(g.actual)+'</strong></span>'+
+      '<span class="payoff-period-summary-item"><small>Remaining balance</small><strong>'+money(historicalRemaining)+'</strong></span>'+
       '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
       '<div class="payoff-period-body"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 4px 14px"><span>Payment budget: <strong>'+money(target)+'</strong></span><span style="color:'+(fullyPaid?'#83e9ba':'#f3ce7b')+';font-weight:700">Recorded: '+money(g.actual)+'</span></div>'+
       (recorded||'<div class="empty">No payments recorded in this period.</div>')+'</div></details>';
