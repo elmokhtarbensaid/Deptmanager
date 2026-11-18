@@ -139,7 +139,14 @@ function calculatePayoff(){
   const word=frequency==='weekly'?'Week':'Month';
   const historyHtml=historical.map(g=>{
     const recorded=g.entries.map(t=>'<div class="payoff-history-transaction" style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #365576"><strong>'+esc(t.card)+'</strong><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>').join('');
-    return '<details class="payoff-period payoff-period-collapsible payoff-history-period" style="background:linear-gradient(120deg,#145348 0%,#10463e 55%,#0c3834 100%) !important;background-color:#10463e !important;border:1px solid #31b78a !important;box-shadow:inset 0 1px 0 rgba(149,255,204,.12) !important">'+
+    const target=payoffBudget(frequency,g.period,payment);
+    const fullyPaid=g.actual+0.005>=target;
+    const periodStyle=fullyPaid
+      ?'background:linear-gradient(120deg,#145348 0%,#10463e 55%,#0c3834 100%) !important;background-color:#10463e !important;border:1px solid #31b78a !important;box-shadow:inset 0 1px 0 rgba(149,255,204,.12) !important'
+      :g.actual>0.005
+        ?'background:linear-gradient(120deg,#554116 0%,#483b19 55%,#302d20 100%) !important;background-color:#483b19 !important;border:1px solid #d6a83f !important;box-shadow:inset 0 1px 0 rgba(255,229,148,.12) !important'
+        :'';
+    return '<details class="payoff-period payoff-period-collapsible payoff-history-period"'+(periodStyle?' style="'+periodStyle+'"':'')+'>'+
       '<summary class="payoff-period-summary" style="background:transparent !important;background-color:transparent !important;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1.5fr) auto;align-items:center">'+
       '<span class="payoff-period-summary-item"><small>Period</small><strong>'+(frequency==='weekly'?'Week ':'Month ')+g.period+'</strong></span>'+
       '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
