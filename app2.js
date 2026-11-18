@@ -183,15 +183,30 @@ function calculatePayoff(){
     const recorded=g.entries.map(t=>{
       const paidDate=new Date(t.date+'T12:00:00');
       const dateText=Number.isFinite(paidDate.getTime())?paidDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):esc(t.date);
+      const card=(data.cards||[]).find(c=>c.name===t.card&&(c.transactions||[]).some(tx=>tx.id===t.id));
+      const ordered=card?(card.transactions||[]).map((tx,i)=>({tx,i})).sort((a,b)=>String(a.tx.date||'').localeCompare(String(b.tx.date||''))||a.i-b.i):[];
+      let running=Number(card?.startingBalance||0),starting=null,ending=null;
+      for(const item of ordered){
+        const tx=item.tx;
+        if(tx.id===t.id&&tx.type==='payment'){starting=Math.max(0,running);ending=Math.max(0,running+txSigned(tx));break;}
+        running+=txSigned(tx);
+      }
+      const day=Number(card?.dueDay);
+      const due=day>=1&&day<=31&&Number.isFinite(paidDate.getTime())?dueDateForMonth(paidDate.getFullYear(),paidDate.getMonth(),day):null;
+      if(due&&due<paidDate)due.setTime(dueDateForMonth(paidDate.getFullYear(),paidDate.getMonth()+1,day).getTime());
+      const fmt=d=>d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'Not set';
       return '<details class="payoff-payment payoff-recorded-payment" style="background:transparent !important;background-color:transparent !important"><summary style="background:transparent !important;background-color:transparent !important"><div class="payoff-main-row">'+
         '<div class="payoff-card-name"><strong>'+esc(t.card)+'</strong></div>'+
         '<div class="payoff-main-value"><span>Payment</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
         '<div class="payoff-main-value"><span>Paid on</span><strong>'+dateText+'</strong></div>'+
         '<div class="payoff-details-label">Details <span>▾</span></div>'+
         '</div></summary><div class="payoff-details" style="background:transparent !important;background-color:transparent !important">'+
-        '<div><span>Card</span><strong>'+esc(t.card)+'</strong></div>'+
         '<div><span>Payment date</span><strong>'+dateText+'</strong></div>'+
-        '<div><span>Recorded payment</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
+        '<div><span>Due date</span><strong>'+fmt(due)+'</strong></div>'+
+        '<div><span>Starting balance</span><strong>'+(starting===null?'Unavailable':money(starting))+'</strong></div>'+
+        '<div><span>Interest</span><strong>Not separately recorded</strong></div>'+
+        '<div><span>Payment made</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
+        '<div><span>Ending balance</span><strong>'+(ending===null?'Unavailable':money(ending))+'</strong></div>'+
         '</div></details>';
     }).join('');
     const target=payoffBudget(frequency,g.period,payment);
