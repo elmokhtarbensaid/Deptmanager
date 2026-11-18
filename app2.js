@@ -44,6 +44,37 @@ document.addEventListener('click',e=>{
 });
 
 function payoffDueDate(year,month,day){return new Date(year,month,Math.min(day,new Date(year,month+1,0).getDate()),12)}
+function payoffStatement(card,reference=new Date()){
+ const records=Object.entries(data?.statementMinimums||{}).filter(([key])=>key.startsWith(String(card.id)+'|'))
+  .map(([key,value])=>({key,...value,due:key.split('|')[1]}))
+  .filter(x=>/^\\d{4}-\\d{2}-\\d{2}$/.test(x.due)&&x.due>=localISO(reference))
+  .sort((a,b)=>a.due.localeCompare(b.due));
+ return records[0]||null;
+}
+function localISO(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function payoffStatementEdit(cardId){
+ const card=(data.cards||[]).find(c=>String(c.id)===String(cardId));if(!card)return;
+ const cycle=payoffCurrentCycle(card);if(!cycle)return;
+ const existing=payoffStatement(card);
+ const due=prompt('Bank statement MINIMUM DUE DATE (YYYY-MM-DD). Use the date shown by the bank:',existing?.due||localISO(cycle.due));
+ if(due===null)return;
+ if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(due)||new Date(due+'T12:00:00').toString()==='Invalid Date'){alert('Enter a valid due date, YYYY-MM-DD.');return}
+ const issued=prompt('STATEMENT DATE (YYYY-MM-DD), shown on your bank statement. Payments after this date count toward this minimum:',existing?.statementDate||'');
+ if(issued===null)return;
+ if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(issued)||issued>due){alert('Enter a valid statement date before the due date.');return}
+ const amountText=prompt('Bank-confirmed ORIGINAL minimum payment for this statement (not remaining due):',String(existing?.minimum??cycle.minimum));
+ if(amountText===null)return;
+ const amount=Number(amountText);
+ if(!Number.isFinite(amount)||amount<0){alert('Enter a valid minimum.');return}
+ const key=String(card.id)+'|'+due;
+ const records={...(data.statementMinimums||{})};
+ if(existing&&existing.key!==key)delete records[existing.key];
+ records[key]={statementDate:issued,minimum:Math.round(amount*100)/100};
+ data.statementMinimums=records;
+ data.minimumAmountOverrides={...(data.minimumAmountOverrides||{}),[key]:Math.round(amount*100)/100};
+ autoSaveDatabase();calculatePayoff();window.refreshCardMinimumButtons?.();
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-statement-edit]');if(!b)return;e.preventDefault();e.stopPropagation();payoffStatementEdit(b.dataset.statementEdit)});
 function payoffCurrentCycle(card,reference=new Date()){
  const day=Number(card.dueDay);if(day<1||day>31)return null;
  const now=new Date(reference);now.setHours(12,0,0,0);
@@ -64,8 +95,10 @@ function payoffCurrentCycle(card,reference=new Date()){
    const index=Number(indexText);
    return [{freq,index,amount:Number(amount)}];
  });
+ const statement=payoffStatement(card,now);
  const minimum=Number(data?.minimumAmountOverrides?.[key]??estimatedMinimum);
- return {key,due,paid,minimum,estimatedMinimum,scheduledOverrides,satisfied:override===true||(override!==false&&paid+0.005>=minimum),manual:override===true,remaining:Math.max(0,minimum-paid)};
+ const bankPaid=statement?(card.transactions||[]).filter(t=>t.type==='payment'&&t.date>statement.statementDate&&t.date<=statement.due&&t.date<=iso(now)).reduce((sum,t)=>sum+Math.max(0,Number(t.amount)||0),0):0;
+ return {key,due,paid,minimum,estimatedMinimum,scheduledOverrides,statement,bankPaid,satisfied:override===true||(statement!==null&&bankPaid+0.005>=Number(statement.minimum)),manual:override===true,remaining:Math.max(0,(statement?Number(statement.minimum):minimum)-(statement?bankPaid:paid))};
 }
 function payoffMinimumAmountEdit(cardId){
  const card=(data.cards||[]).find(c=>String(c.id)===String(cardId));if(!card)return;
