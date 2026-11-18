@@ -13,6 +13,29 @@ function payoffEdit(period,frequency,base){
  data.payoffAdjustments=state;autoSaveDatabase();calculatePayoff();
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-payoff-edit]');if(!b)return;e.preventDefault();e.stopPropagation();payoffEdit(Number(b.dataset.payoffEdit),b.dataset.frequency,Number(b.dataset.base))});
+
+// Card-specific payment overrides apply to one schedule period only.
+// All other allocations are recomputed within that period's existing budget.
+function payoffCardOverrides(){return data?.payoffCardAdjustments||{}}
+function payoffCardEdit(period,frequency,cardId,cardName,amount,budget){
+ const key=frequency+':'+period, all=payoffCardOverrides(), current=all[key]||{};
+ const other=Object.entries(current).reduce((sum,[id,v])=>sum+(id===cardId?0:Math.max(0,Number(v)||0)),0);
+ const entered=prompt('Payment for '+cardName+' in '+(frequency==='weekly'?'Week ':'Month ')+period+' (budget '+money(budget)+'). Enter an amount, or leave blank to restore automatic allocation.',Number(amount).toFixed(2));
+ if(entered===null)return;
+ const next=entered.trim()===''?null:Number(entered);
+ if(next!==null&&(!Number.isFinite(next)||next<0||Math.round((next+other)*100)>Math.round(budget*100))){
+   alert('Invalid amount. Fixed card payments cannot exceed the period budget ('+money(budget)+').');return;
+ }
+ const updated={...all}, entries={...current};
+ if(next===null)delete entries[cardId];else entries[cardId]=Math.round(next*100)/100;
+ if(Object.keys(entries).length)updated[key]=entries;else delete updated[key];
+ data.payoffCardAdjustments=updated;autoSaveDatabase();calculatePayoff();
+}
+document.addEventListener('click',e=>{
+ const btn=e.target.closest('[data-payoff-card-edit]');if(!btn)return;
+ e.preventDefault();e.stopPropagation();
+ payoffCardEdit(Number(btn.dataset.period),btn.dataset.frequency,btn.dataset.payoffCardEdit,btn.dataset.cardName,Number(btn.dataset.amount),Number(btn.dataset.budget));
+});
 function calculatePayoff(){
   const cards=sortedCards().filter(c=>balance(c)>0.005), frequency=$('#payoffFrequency').value||'monthly';
   const entered=Number($('#customPayment').value)||0, mins=cards.reduce((s,c)=>s+(cardMinimum(c)),0);
@@ -104,6 +127,21 @@ function calculatePayoff(){
       lastMonth=month;lastYear=year;
     }
     let rem=payoffBudget(frequency,period+historical.length,payment);
+    const absolutePeriod=period+historical.length;
+    const fixedPayments=payoffCardOverrides()[frequency+':'+absolutePeriod]||{};
+    const fixedIds=new Set();
+    // Reserve manual allocations before automatic minimums and APR prioritization.
+    for(const x of s){
+      if(!Object.prototype.hasOwnProperty.call(fixedPayments,x.card.id))continue;
+      const requested=Math.max(0,Math.round((Number(fixedPayments[x.card.id])||0)*100)/100);
+      const v=Math.min(rem,x.bal,requested);
+      fixedIds.add(x.card.id);
+      if(v>0.005){
+        x.bal-=v;x.paidMin+=v;rem=Math.max(0,rem-v);totalPaid+=v;
+        paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
+      }
+      if(requested>v+0.005)dueWarnings.push(x.card.name+': manual payment exceeds available budget or balance in '+(frequency==='weekly'?'Week ':'Month ')+absolutePeriod);
+    }
     const nextPayDate=new Date(date);
     if(frequency==='weekly')nextPayDate.setDate(nextPayDate.getDate()+7);
     else nextPayDate.setMonth(nextPayDate.getMonth()+1);
@@ -116,7 +154,7 @@ function calculatePayoff(){
     }
     // Consolidate minimum payments: pay a card when its deadline requires it,
     // or earlier only when future payment budgets cannot cover all due minimums.
-    const obligations=s.filter(x=>x.bal>0.005&&x.nextDue).sort((a,b)=>a.nextDue-b.nextDue);
+    const obligations=s.filter(x=>x.bal>0.005&&x.nextDue&&!fixedIds.has(x.card.id)).sort((a,b)=>a.nextDue-b.nextDue);
     const availableFutureBefore=deadline=>{
       let total=0,day=new Date(nextPayDate),step=1;
       while(day<=deadline&&step<=60){
@@ -146,7 +184,7 @@ function calculatePayoff(){
       }
     }
     // Only use remaining funds to clear small balances.
-    for(const x of s.filter(x=>x.bal>0.005&&x.bal<150).sort((a,b)=>a.bal-b.bal)){
+    for(const x of s.filter(x=>x.bal>0.005&&x.bal<150&&!fixedIds.has(x.card.id)).sort((a,b)=>a.bal-b.bal)){
       if(rem+0.005<x.bal)continue;
       const v=x.bal;
       x.bal=0;rem=Math.max(0,rem-v);totalPaid+=v;
@@ -154,14 +192,14 @@ function calculatePayoff(){
       x.paidMin=Math.max(x.paidMin,x.min);
     }
     // Priority 3: debt avalanche: highest APR first, then next-highest.
-    for(const x of s.filter(x=>x.bal>0.005).sort((a,b)=>Number(b.card.apr||0)-Number(a.card.apr||0)||a.bal-b.bal)){
+    for(const x of s.filter(x=>x.bal>0.005&&!fixedIds.has(x.card.id)).sort((a,b)=>Number(b.card.apr||0)-Number(a.card.apr||0)||a.bal-b.bal)){
       if(rem<=0.005)break;
       const v=Math.min(rem,x.bal);
       x.bal-=v;rem-=v;totalPaid+=v;
       x.paidMin=Math.min(x.min,x.paidMin+v);
       paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
     }
-    for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=x.nextDue?new Date(x.nextDue):(d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date));let recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,start:st,interest:v,payment:p,end:x.bal})}}
+    for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=x.nextDue?new Date(x.nextDue):(d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date));let recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,cardId:x.card.id,start:st,interest:v,payment:p,end:x.bal})}}
     lastMonth=month;lastYear=year;
   }
   const pastCount=historical.length;
@@ -293,7 +331,9 @@ function calculatePayoff(){
   }).join('');
   $('#amortizationTable').innerHTML=warningsHtml+historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
-    const rows=g.rows.filter(x=>x.payment>0.005).map(x=>{
+    const periodBudget=payoffBudget(frequency,g.period,payment);
+    const manualIds=payoffCardOverrides()[frequency+':'+g.period]||{};
+    const rows=g.rows.filter(x=>x.payment>0.005||Object.prototype.hasOwnProperty.call(manualIds,x.cardId)).map(x=>{
       return '<details class="payoff-payment"><summary><div class="payoff-main-row">'+
         '<div class="payoff-card-name"><strong>'+esc(x.card)+'</strong></div>'+
         '<div class="payoff-main-value"><span>Payment</span><strong>'+money(x.payment)+'</strong></div>'+
@@ -306,6 +346,7 @@ function calculatePayoff(){
         '<div><span>Starting balance</span><strong>'+money(x.start)+'</strong></div>'+
         '<div><span>Interest</span><strong>'+money(x.interest)+'</strong></div>'+
         '<div><span>Payment made</span><strong>'+money(x.payment)+'</strong></div>'+
+        '<div><span>Manual adjustment</span><button type="button" data-payoff-card-edit="'+esc(String(x.cardId))+'" data-card-name="'+esc(x.card)+'" data-period="'+g.period+'" data-frequency="'+frequency+'" data-amount="'+x.payment+'" data-budget="'+periodBudget+'" style="padding:6px 10px;border:1px solid #4d9df2;border-radius:8px;background:#1251a0;color:#fff;cursor:pointer">✎ Edit this card payment</button></div>''+
         '<div><span>Ending balance</span><strong>'+money(x.end)+'</strong></div>'+
         '</div></details>';
     }).join('');
