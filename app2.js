@@ -36,6 +36,34 @@ document.addEventListener('click',e=>{
  e.preventDefault();e.stopPropagation();
  payoffCardEdit(Number(btn.dataset.period),btn.dataset.frequency,btn.dataset.payoffCardEdit,btn.dataset.cardName,Number(btn.dataset.amount),Number(btn.dataset.budget));
 });
+
+function payoffDueDate(year,month,day){return new Date(year,month,Math.min(day,new Date(year,month+1,0).getDate()),12)}
+function payoffCurrentCycle(card,reference=new Date()){
+ const day=Number(card.dueDay);if(day<1||day>31)return null;
+ const now=new Date(reference);now.setHours(12,0,0,0);
+ let due=payoffDueDate(now.getFullYear(),now.getMonth(),day);
+ if(due<now)due=payoffDueDate(now.getFullYear(),now.getMonth()+1,day);
+ const previous=payoffDueDate(due.getFullYear(),due.getMonth()-1,day);
+ const iso=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+ const paid=(card.transactions||[]).filter(t=>t.type==='payment'&&t.date>iso(previous)&&t.date<=iso(now)).reduce((sum,t)=>sum+Math.max(0,Number(t.amount)||0),0);
+ const key=String(card.id)+'|'+iso(due);
+ const override=data?.minimumCycleOverrides?.[key];
+ const minimum=cardMinimum(card);
+ return {key,due,paid,minimum,satisfied:override===true||(override!==false&&paid+0.005>=minimum),manual:override===true,remaining:Math.max(0,minimum-paid)};
+}
+function payoffMinimumToggle(cardId){
+ const card=(data.cards||[]).find(c=>String(c.id)===String(cardId));if(!card)return;
+ const cycle=payoffCurrentCycle(card);if(!cycle){alert('Set the card due day first.');return}
+ const overrides={...(data.minimumCycleOverrides||{})};
+ if(overrides[cycle.key]===true)delete overrides[cycle.key];
+ else overrides[cycle.key]=true;
+ data.minimumCycleOverrides=overrides;
+ autoSaveDatabase();calculatePayoff();
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-minimum-toggle]');if(!b)return;
+ e.preventDefault();e.stopPropagation();payoffMinimumToggle(b.dataset.minimumToggle);
+});
 function calculatePayoff(){
   const cards=sortedCards().filter(c=>balance(c)>0.005), frequency=$('#payoffFrequency').value||'monthly';
   const entered=Number($('#customPayment').value)||0, mins=cards.reduce((s,c)=>s+(cardMinimum(c)),0);
@@ -97,7 +125,8 @@ function calculatePayoff(){
     if(due<today)due=dueDateForMonth(today.getFullYear(),today.getMonth()+1,day);
     x.nextDue=due;
     const previous=dueDateForMonth(due.getFullYear(),due.getMonth()-1,day);
-    x.paidMin=Math.min(x.min,(x.card.transactions||[]).filter(t=>t.type==='payment'&&t.date>isoDate(previous)&&t.date<=isoDate(today)).reduce((v,t)=>v+Math.max(0,Number(t.amount)||0),0));
+    const cycle=payoffCurrentCycle(x.card,today);
+    x.paidMin=cycle?.satisfied?x.min:Math.min(x.min,cycle?.paid||0);
     if(date>due&&x.min-x.paidMin>0.005)dueWarnings.push(x.card.name+': next payday is after '+isoDate(due));
   }
   while(s.some(x=>x.bal>0.005)&&period<max){
@@ -150,6 +179,8 @@ function calculatePayoff(){
         if(x.bal>0.005&&x.paidMin+0.005<x.min)dueWarnings.push(x.card.name+': '+money(x.min-x.paidMin)+' short by '+isoDate(x.nextDue));
         x.paidMin=0;
         x.nextDue=dueDateForMonth(x.nextDue.getFullYear(),x.nextDue.getMonth()+1,Number(x.card.dueDay));
+        const nextKey=String(x.card.id)+'|'+isoDate(x.nextDue);
+        if(data?.minimumCycleOverrides?.[nextKey]===true)x.paidMin=x.min;
       }
     }
     // Consolidate minimum payments: pay a card when its deadline requires it,
@@ -383,7 +414,12 @@ function calculatePayoff(){
       '<div class="payoff-period-body"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 4px 14px"><span>Payment budget: <strong>'+money(target)+'</strong></span><span style="color:'+(fullyPaid?'#83e9ba':'#f3ce7b')+';font-weight:700">Recorded: '+money(g.actual)+'</span></div>'+
       recorded+extraSuggestion+'</div></details>';
   }).join('');
-  $('#amortizationTable').innerHTML=warningsHtml+historyHtml+[...groups.values()].map(g=>{
+  const minimumStatusHtml='<div class="payoff-minimum-status" style="margin:12px 0;padding:12px;border:1px solid #35577d;border-radius:12px;background:#132e4c"><strong>Monthly minimum payment status</strong><div style="font-size:12px;color:#afc6dd;margin:5px 0 10px">Recorded payments are estimated by due-date cycle. Confirm with your bank. Manual status applies only to the shown due date.</div>'+
+    cards.map(c=>{const cycle=payoffCurrentCycle(c);if(!cycle)return '';
+      const due=cycle.due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #315071"><div><strong>'+esc(c.name)+'</strong><div style="font-size:12px;color:#b9cbe0">Due '+due+' · '+(cycle.manual?'Manually confirmed':cycle.satisfied?'Estimated satisfied':'Estimated remaining '+money(cycle.remaining))+'</div></div><button type="button" data-minimum-toggle="'+esc(String(c.id))+'" style="flex-shrink:0;padding:7px 9px;border:1px solid #4d9df2;border-radius:8px;background:'+(cycle.manual?'#24516b':'#1251a0')+';color:white;cursor:pointer">'+(cycle.manual?'Undo confirmation':'Mark satisfied')+'</button></div>';
+    }).join('')+'</div>';
+  $('#amortizationTable').innerHTML=minimumStatusHtml+warningsHtml+historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
     const periodBudget=payoffBudget(frequency,g.period,payment);
     const manualIds=payoffCardOverrides()[frequency+':'+g.period]||{};
