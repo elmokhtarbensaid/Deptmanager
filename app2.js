@@ -90,7 +90,7 @@ function payoffMinimumToggle(cardId){
  if(overrides[cycle.key]===true)delete overrides[cycle.key];
  else overrides[cycle.key]=true;
  data.minimumCycleOverrides=overrides;
- autoSaveDatabase();calculatePayoff();
+ autoSaveDatabase();calculatePayoff();if(typeof window.refreshCardMinimumButtons==='function')window.refreshCardMinimumButtons();
 }
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-minimum-toggle]');if(!b)return;
@@ -483,7 +483,7 @@ function calculatePayoff(){
       const status=cycle.manual?'Manually confirmed':cycle.satisfied?'Estimated satisfied':'Estimated remaining '+money(cycle.remaining);
       return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #315071"><div><strong>'+esc(c.name)+'</strong><div style="font-size:12px;color:#b9cbe0">Due '+due+' · '+status+' · '+(confirmed?'Confirmed minimum ':'Estimated minimum ')+money(cycle.minimum)+(planned!==null?' · Manual planned payment '+money(planned):'')+'</div></div><div style="display:flex;gap:5px;flex-shrink:0"><button type="button" data-minimum-amount-edit="'+esc(String(c.id))+'" style="padding:7px 9px;border:1px solid #4d9df2;border-radius:8px;background:#24516b;color:white;cursor:pointer">Edit min</button><button type="button" data-minimum-toggle="'+esc(String(c.id))+'" style="padding:7px 9px;border:1px solid #4d9df2;border-radius:8px;background:'+(cycle.manual?'#24516b':'#1251a0')+';color:white;cursor:pointer">'+(cycle.manual?'Undo confirmation':'Mark satisfied')+'</button></div></div>';
     }).join('')+'</div>';
-  $('#amortizationTable').innerHTML=minimumStatusHtml+warningsHtml+historyHtml+[...groups.values()].map(g=>{
+  $('#amortizationTable').innerHTML=warningsHtml+historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
     const periodBudget=payoffBudget(frequency,g.period,payment);
     const manualIds=payoffCardOverrides()[frequency+':'+g.period]||{};
