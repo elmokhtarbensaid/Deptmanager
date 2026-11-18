@@ -158,6 +158,7 @@ function calculatePayoff(){
       if(rem<=0.005)break;
       const v=Math.min(rem,x.bal);
       x.bal-=v;rem-=v;totalPaid+=v;
+      x.paidMin=Math.min(x.min,x.paidMin+v);
       paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
     }
     for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=x.nextDue?new Date(x.nextDue):(d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date));let recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,start:st,interest:v,payment:p,end:x.bal})}}
