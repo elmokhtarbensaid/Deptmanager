@@ -346,7 +346,7 @@ function calculatePayoff(){
         '<div><span>Starting balance</span><strong>'+money(x.start)+'</strong></div>'+
         '<div><span>Interest</span><strong>'+money(x.interest)+'</strong></div>'+
         '<div><span>Payment made</span><strong>'+money(x.payment)+'</strong></div>'+
-        '<div><span>Manual adjustment</span><button type="button" data-payoff-card-edit="'+esc(String(x.cardId))+'" data-card-name="'+esc(x.card)+'" data-period="'+g.period+'" data-frequency="'+frequency+'" data-amount="'+x.payment+'" data-budget="'+periodBudget+'" style="padding:6px 10px;border:1px solid #4d9df2;border-radius:8px;background:#1251a0;color:#fff;cursor:pointer">✎ Edit this card payment</button></div>''+
+        '<div><span>Manual adjustment</span><button type="button" data-payoff-card-edit="'+esc(String(x.cardId))+'" data-card-name="'+esc(x.card)+'" data-period="'+g.period+'" data-frequency="'+frequency+'" data-amount="'+x.payment+'" data-budget="'+periodBudget+'" style="padding:6px 10px;border:1px solid #4d9df2;border-radius:8px;background:#1251a0;color:#fff;cursor:pointer">✎ Edit this card payment</button></div>'+
         '<div><span>Ending balance</span><strong>'+money(x.end)+'</strong></div>'+
         '</div></details>';
     }).join('');
