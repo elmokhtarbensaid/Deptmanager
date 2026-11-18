@@ -202,6 +202,7 @@ function calculatePayoff(){
       // its due-date cycle. The obligation is fixed until the next statement.
       lastMonth=month;lastYear=year;
     }
+    const minimumPaidAtPeriodStart=new Map(s.map(x=>[x.card.id,x.paidMin]));
     let rem=payoffBudget(frequency,period+historical.length,payment);
     const absolutePeriod=period+historical.length;
     const fixedPayments=payoffCardOverrides()[frequency+':'+absolutePeriod]||{};
@@ -298,7 +299,7 @@ function calculatePayoff(){
       }
     }
     // A donor may transfer only the amount above its own satisfied minimum.
-    const xMinDue=x=>Math.min(x.min,x.bal+(paid.get(x.card.id)||0));
+    const minimumRequiredThisPeriod=x=>Math.max(0,x.min-(minimumPaidAtPeriodStart.get(x.card.id)||0));
     // Consolidate mandatory sub-$25 payments after avalanche allocation.
     // Move only optional extra money from another card, never a manual override
     // or a minimum reserved for its own deadline.
@@ -311,13 +312,13 @@ function calculatePayoff(){
         if(need<=0.005)break;
         const original=paid.get(donor.card.id)||0;
         const protectedAmount=protectedPayments.get(donor.card.id)||0;
-        const minimumProtected=Math.max(0,xMinDue(donor));
-        const transferable=Math.max(0,Math.min(original-Math.max(25,protectedAmount),donor.paidMin-minimumProtected));
+        const minimumProtected=minimumRequiredThisPeriod(donor);
+        const transferable=Math.max(0,original-Math.max(25,protectedAmount,minimumProtected));
         const move=Math.min(need,transferable);
         if(move<=0.005)continue;
         paid.set(donor.card.id,Math.round((original-move)*100)/100);
         donor.bal+=move;
-        donor.paidMin=Math.max(0,donor.paidMin-move);
+        donor.paidMin=Math.min(donor.min,(minimumPaidAtPeriodStart.get(donor.card.id)||0)+original-move);
         paid.set(recipient.card.id,Math.round(((paid.get(recipient.card.id)||0)+move)*100)/100);
         recipient.bal-=move;
         recipient.paidMin=Math.min(recipient.min,recipient.paidMin+move);
