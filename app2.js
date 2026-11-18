@@ -174,7 +174,20 @@ function calculatePayoff(){
       cumulativeDue+=outstanding;
       const futureCapacity=availableFutureBefore(x.nextDue);
       const neededNow=Math.max(0,cumulativeDue-futureCapacity-committedNow);
-      const v=Math.min(rem,x.bal,outstanding,Math.ceil(neededNow*100)/100);
+      // Prefer consolidated payments of at least $25. A smaller payment is
+      // allowed only when the due-date obligation cannot safely wait.
+      const mandatoryNow=x.nextDue<nextPayDate;
+      let desired=Math.ceil(neededNow*100)/100;
+      if(desired>0.005&&desired<25){
+        if(rem>=25&&x.bal>=25)desired=Math.min(25,outstanding);
+        else if(!mandatoryNow&&futureCapacity>=cumulativeDue-committedNow)desired=0;
+      }
+      let v=Math.min(rem,x.bal,outstanding,desired);
+      if(v>0.005&&v<25&&!mandatoryNow){
+        // Do not create optional tiny transactions; only a genuine minimum
+        // deadline can justify an exception to the $25 preference.
+        v=0;
+      }
       if(v>0.005){
         x.bal-=v;x.paidMin+=v;rem-=v;totalPaid+=v;committedNow+=v;
         paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
@@ -191,13 +204,28 @@ function calculatePayoff(){
       paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
       x.paidMin=Math.max(x.paidMin,x.min);
     }
-    // Priority 3: debt avalanche: highest APR first, then next-highest.
-    for(const x of s.filter(x=>x.bal>0.005&&!fixedIds.has(x.card.id)).sort((a,b)=>Number(b.card.apr||0)-Number(a.card.apr||0)||a.bal-b.bal)){
+    // Priority 3: avalanche. Avoid creating a separate optional payment
+    // under $25. Add small leftovers to an already-paid card instead.
+    const avalanche=s.filter(x=>x.bal>0.005&&!fixedIds.has(x.card.id)).sort((a,b)=>Number(b.card.apr||0)-Number(a.card.apr||0)||a.bal-b.bal);
+    for(const x of avalanche){
       if(rem<=0.005)break;
       const v=Math.min(rem,x.bal);
+      const existing=paid.get(x.card.id)||0;
+      if(v<25&&existing<=0.005)continue;
       x.bal-=v;rem-=v;totalPaid+=v;
       x.paidMin=Math.min(x.min,x.paidMin+v);
-      paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
+      paid.set(x.card.id,existing+v);
+    }
+    if(rem>0.005){
+      const alreadyPaid=s.filter(x=>x.bal>0.005&&!fixedIds.has(x.card.id)&&(paid.get(x.card.id)||0)>0.005)
+        .sort((a,b)=>Number(b.card.apr||0)-Number(a.card.apr||0));
+      for(const x of alreadyPaid){
+        if(rem<=0.005)break;
+        const v=Math.min(rem,x.bal);
+        x.bal-=v;rem-=v;totalPaid+=v;
+        x.paidMin=Math.min(x.min,x.paidMin+v);
+        paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
+      }
     }
     for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=x.nextDue?new Date(x.nextDue):(d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date));let recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,cardId:x.card.id,start:st,interest:v,payment:p,end:x.bal})}}
     lastMonth=month;lastYear=year;
