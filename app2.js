@@ -18,18 +18,24 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-payoff-edi
 // All other allocations are recomputed within that period's existing budget.
 function payoffCardOverrides(){return data?.payoffCardAdjustments||{}}
 function payoffCardEdit(period,frequency,cardId,cardName,amount,budget){
- const key=frequency+':'+period, all=payoffCardOverrides(), current=all[key]||{};
- const other=Object.entries(current).reduce((sum,[id,v])=>sum+(id===cardId?0:Math.max(0,Number(v)||0)),0);
- const entered=prompt('Payment for '+cardName+' in '+(frequency==='weekly'?'Week ':'Month ')+period+' (budget '+money(budget)+'). Enter an amount, or leave blank to restore automatic allocation.',Number(amount).toFixed(2));
- if(entered===null)return;
- const next=entered.trim()===''?null:Number(entered);
- if(next!==null&&(!Number.isFinite(next)||next<0||Math.round((next+other)*100)>Math.round(budget*100))){
-   alert('Invalid amount. Fixed card payments cannot exceed the period budget ('+money(budget)+').');return;
- }
- const updated={...all}, entries={...current};
- if(next===null)delete entries[cardId];else entries[cardId]=Math.round(next*100)/100;
- if(Object.keys(entries).length)updated[key]=entries;else delete updated[key];
- data.payoffCardAdjustments=updated;autoSaveDatabase();calculatePayoff();
+ const card=(data.cards||[]).find(c=>String(c.id)===String(cardId));
+ if(!card)return;
+ const cycle=payoffCurrentCycle(card);
+ if(!cycle){alert('Set a due date for this card first.');return}
+ const value=prompt('Bank-required minimum for '+cardName+' due '+cycle.due.toLocaleDateString('en-US')+' (blank to restore estimate):',cycle.minimum.toFixed(2));
+ if(value===null)return;
+ const next=value.trim()===''?null:Number(value);
+ if(next!==null&&(!Number.isFinite(next)||next<0)){alert('Enter a valid minimum amount.');return}
+ const overrides={...(data.minimumAmountOverrides||{})};
+ if(next===null)delete overrides[cycle.key];else overrides[cycle.key]=Math.round(next*100)/100;
+ data.minimumAmountOverrides=overrides;
+ // Legacy per-period manual payment locks are not minimum requirements.
+ // Remove the lock for this card so extra funds can flow to the avalanche.
+ const key=frequency+':'+period, all={...payoffCardOverrides()}, entries={...(all[key]||{})};
+ delete entries[cardId];
+ if(Object.keys(entries).length)all[key]=entries;else delete all[key];
+ data.payoffCardAdjustments=all;
+ autoSaveDatabase();calculatePayoff();
 }
 document.addEventListener('click',e=>{
  const btn=e.target.closest('[data-payoff-card-edit]');if(!btn)return;
@@ -152,6 +158,7 @@ function calculatePayoff(){
     x.nextDue=due;
     const previous=dueDateForMonth(due.getFullYear(),due.getMonth()-1,day);
     const cycle=payoffCurrentCycle(x.card,today);
+    x.min=cycle?.minimum??x.min;
     x.paidMin=cycle?.satisfied?x.min:Math.min(x.min,cycle?.paid||0);
     if(date>due&&x.min-x.paidMin>0.005)dueWarnings.push(x.card.name+': next payday is after '+isoDate(due));
   }
@@ -206,6 +213,7 @@ function calculatePayoff(){
         x.paidMin=0;
         x.nextDue=dueDateForMonth(x.nextDue.getFullYear(),x.nextDue.getMonth()+1,Number(x.card.dueDay));
         const nextKey=String(x.card.id)+'|'+isoDate(x.nextDue);
+        if(Object.prototype.hasOwnProperty.call(data?.minimumAmountOverrides||{},nextKey))x.min=Number(data.minimumAmountOverrides[nextKey]);
         if(data?.minimumCycleOverrides?.[nextKey]===true)x.paidMin=x.min;
       }
     }
@@ -478,7 +486,7 @@ function calculatePayoff(){
         '<div><span>Starting balance</span><strong>'+money(x.start)+'</strong></div>'+
         '<div><span>Interest</span><strong>'+money(x.interest)+'</strong></div>'+
         '<div><span>Payment made</span><strong>'+money(x.payment)+'</strong></div>'+
-        '<div><span>Manual adjustment</span><button type="button" data-payoff-card-edit="'+esc(String(x.cardId))+'" data-card-name="'+esc(x.card)+'" data-period="'+g.period+'" data-frequency="'+frequency+'" data-amount="'+x.payment+'" data-budget="'+periodBudget+'" style="padding:6px 10px;border:1px solid #4d9df2;border-radius:8px;background:#1251a0;color:#fff;cursor:pointer">✎ Edit this card payment</button></div>'+
+        '<div><span>Manual adjustment</span><button type="button" data-payoff-card-edit="'+esc(String(x.cardId))+'" data-card-name="'+esc(x.card)+'" data-period="'+g.period+'" data-frequency="'+frequency+'" data-amount="'+x.payment+'" data-budget="'+periodBudget+'" style="padding:6px 10px;border:1px solid #4d9df2;border-radius:8px;background:#1251a0;color:#fff;cursor:pointer">✎ Correct bank minimum</button></div>'+
         '<div><span>Ending balance</span><strong>'+money(x.end)+'</strong></div>'+
         '</div></details>';
     }).join('');
