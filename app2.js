@@ -1,3 +1,19 @@
+// Payment overrides are keyed by frequency and schedule period and persist on this device.
+const payoffOverrideKey='ccm_payoff_adjustments_v1';
+function payoffOverrides(){try{return JSON.parse(localStorage.getItem(payoffOverrideKey)||'{}')||{}}catch(e){return {}}}
+function payoffBudget(frequency,period,base){const entries=payoffOverrides()[frequency]||[];let amount=base;for(const a of entries.slice().sort((a,b)=>a.period-b.period)){if(a.period<=period&&(a.scope==='future'||a.period===period))amount=a.amount;else if(a.period>period)break;}return amount}
+function payoffEdit(period,frequency,base){
+ const current=payoffBudget(frequency,period,base);
+ const amount=prompt('Payment amount for '+(frequency==='weekly'?'Week ':'Month ')+period,Number(current).toFixed(2));
+ if(amount===null)return;
+ const value=Number(amount);
+ if(!Number.isFinite(value)||value<=0){alert('Enter a valid payment amount.');return}
+ const scope=confirm('Apply '+value.toLocaleString('en-US',{style:'currency',currency:'USD'})+' to this and ALL following periods?\\nOK = all following periods\\nCancel = only this period');
+ const state=payoffOverrides(),entries=state[frequency]||[];
+ state[frequency]=entries.filter(a=>a.period!==period).concat([{period,amount:value,scope:scope?'future':'once'}]).sort((a,b)=>a.period-b.period);
+ localStorage.setItem(payoffOverrideKey,JSON.stringify(state));calculatePayoff();
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-payoff-edit]');if(!b)return;e.preventDefault();e.stopPropagation();payoffEdit(Number(b.dataset.payoffEdit),b.dataset.frequency,Number(b.dataset.base))});
 function calculatePayoff(){
   const cards=sortedCards().filter(c=>balance(c)>0.005), frequency=$('#payoffFrequency').value||'monthly';
   const entered=Number($('#customPayment').value)||0, mins=cards.reduce((s,c)=>s+(cardMinimum(c)),0);
@@ -77,7 +93,7 @@ function calculatePayoff(){
       for(const x of s.filter(x=>x.bal>0.005)){const v=x.bal*x.rate;x.bal+=v;interest.set(x.card.id,v);totalInterest+=v;x.min=cardMinimum(x.card,x.bal,v)}
       lastMonth=month;lastYear=year;
     }
-    let rem=payment;
+    let rem=payoffBudget(frequency,period+historical.length,payment);
     // Priority 1: completely clear every balance below $150, smallest first.
     // Only spend available funds; never let the payment budget go negative.
     for(const x of s.filter(x=>x.bal>0.005&&x.bal<150).sort((a,b)=>a.bal-b.bal)){
@@ -130,7 +146,7 @@ function calculatePayoff(){
       '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
       '<span class="payoff-period-summary-item"><small>Recorded payments</small><strong>'+money(g.actual)+'</strong></span>'+
       '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
-      '<div class="payoff-period-body"><p>Recorded payments for this period. Target: '+money(payment)+'.</p>'+
+      '<div class="payoff-period-body"><p>Recorded payments for this period. Target: '+money(payoffBudget(frequency,g.period,payment))+'.</p>'+
       (recorded||'<div class="empty">No payments recorded in this period.</div>')+'</div></details>';
   }).join('');
   $('#amortizationTable').innerHTML=historyHtml+[...groups.values()].map(g=>{
@@ -157,7 +173,7 @@ function calculatePayoff(){
       '<span class="payoff-period-summary-item"><small>Payment day</small><strong>'+g.date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+'</strong></span>'+
       '<span class="payoff-period-summary-item"><small>Remaining balance</small><strong>'+money(remaining)+'</strong></span>'+
       '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
-      '<div class="payoff-period-body">'+rows+'</div></details>';
+      '<div class="payoff-period-body"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px 14px"><span>Payment budget: <strong>'+money(payoffBudget(frequency,g.period,payment))+'</strong></span><button type="button" data-payoff-edit="'+g.period+'" data-frequency="'+frequency+'" data-base="'+payment+'" style="padding:8px 12px;border:1px solid #4d9df2;border-radius:9px;background:#1251a0;color:white;font-weight:700;cursor:pointer">✎ Change payment</button></div>'+rows+'</div></details>';
   }).join('')||'<div class="empty">No payoff schedule.</div>';
 }
 // Initialize the optional manual first payment date to the next seven-day payday.
