@@ -1,6 +1,5 @@
 // Payment overrides are keyed by frequency and schedule period and persist on this device.
-const payoffOverrideKey='ccm_payoff_adjustments_v1';
-function payoffOverrides(){try{return JSON.parse(localStorage.getItem(payoffOverrideKey)||'{}')||{}}catch(e){return {}}}
+function payoffOverrides(){return data?.payoffAdjustments||{weekly:[],monthly:[]}}
 function payoffBudget(frequency,period,base){const entries=payoffOverrides()[frequency]||[];let amount=base;for(const a of entries.slice().sort((a,b)=>a.period-b.period)){if(a.period<=period&&(a.scope==='future'||a.period===period))amount=a.amount;else if(a.period>period)break;}return amount}
 function payoffEdit(period,frequency,base){
  const current=payoffBudget(frequency,period,base);
@@ -9,9 +8,9 @@ function payoffEdit(period,frequency,base){
  const value=Number(amount);
  if(!Number.isFinite(value)||value<=0){alert('Enter a valid payment amount.');return}
  const scope=confirm('Apply '+value.toLocaleString('en-US',{style:'currency',currency:'USD'})+' to this and ALL following periods?\\nOK = all following periods\\nCancel = only this period');
- const state=payoffOverrides(),entries=state[frequency]||[];
+ const state=JSON.parse(JSON.stringify(payoffOverrides())),entries=state[frequency]||[];
  state[frequency]=entries.filter(a=>a.period!==period).concat([{period,amount:value,scope:scope?'future':'once'}]).sort((a,b)=>a.period-b.period);
- localStorage.setItem(payoffOverrideKey,JSON.stringify(state));calculatePayoff();
+ data.payoffAdjustments=state;autoSaveDatabase();calculatePayoff();
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-payoff-edit]');if(!b)return;e.preventDefault();e.stopPropagation();payoffEdit(Number(b.dataset.payoffEdit),b.dataset.frequency,Number(b.dataset.base))});
 function calculatePayoff(){
