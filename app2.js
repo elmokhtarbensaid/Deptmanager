@@ -37,7 +37,7 @@ function calculatePayoff(){
       const from=iso(cursor),until=iso(endExclusive);
       const entries=(data.cards||[]).flatMap(c=>(c.transactions||[]).filter(t=>t.type==='payment'&&t.date>=from&&t.date<until).map(t=>({card:c.name,amount:Math.max(0,Number(t.amount)||0),date:t.date,id:t.id})));
       const actual=entries.reduce((sum,t)=>sum+t.amount,0);
-      if(end<=now||entries.length){historical.push({period:++count,date:new Date(cursor),entries,actual,complete:end<=now});}else break;
+      if(end<=now||entries.length||cursor<=now){historical.push({period:++count,date:new Date(cursor),entries,actual,complete:end<=now});}else break;
       cursor=end;
     }
   }
@@ -217,10 +217,34 @@ function calculatePayoff(){
           available=Math.max(0,available-amount);
         }
       }
-      extraSuggestion='<div class="payoff-extra-suggestion" style="margin:14px 0 4px;padding:14px;border:1px solid #d5a84a;border-radius:12px;background:rgba(255,209,102,.09)">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><strong style="color:#ffe1a1">Remaining budget to allocate</strong><strong style="color:#ffe1a1">'+money(unallocated)+'</strong></div>'+
-        (allocations.length?'<div style="margin-top:10px;font-weight:700">Suggested additional payment'+(allocations.length>1?'s':'')+':</div>'+allocations.map(a=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.14)"><span><strong>'+esc(a.name)+'</strong><small style="display:block;color:#e4cf9d">'+esc(a.reason)+'</small></span><strong style="color:#83e9ba">'+money(a.amount)+'</strong></div>').join(''):'<div style="margin-top:8px">No eligible outstanding card balance found.</div>')+
-        '<small style="display:block;margin-top:10px;color:#e4cf9d">Suggestions only — not recorded as paid. Confirm statement minimums and processing deadlines before sending payments.</small></div>';
+      // Display pending allocations using the exact same expandable card layout as future weeks.
+      extraSuggestion=allocations.map(a=>{
+        const candidate=candidates.find(x=>x.card.name===a.name);
+        const c=candidate?.card;
+        if(!c)return '';
+        const bal=candidate.bal,amount=a.amount,ending=Math.max(0,bal-amount);
+        const due=candidate.due;
+        const recommended=due?new Date(due):new Date(now);
+        if(due)recommended.setDate(recommended.getDate()-3);
+        if(recommended<now)recommended.setTime(now.getTime());
+        const fmt=d=>d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'Not set';
+        return '<details class="payoff-payment payoff-pending-payment" style="background:transparent !important;background-color:transparent !important">'+
+          '<summary style="background:transparent !important;background-color:transparent !important"><div class="payoff-main-row">'+
+          '<div class="payoff-card-name"><strong>'+esc(a.name)+'</strong></div>'+
+          '<div class="payoff-main-value"><span>Payment</span><strong>'+money(amount)+'</strong></div>'+
+          '<div class="payoff-main-value"><span>Recommended</span><strong>'+fmt(recommended)+'</strong></div>'+
+          '<div class="payoff-details-label">Details <span>▾</span></div></div></summary>'+
+          '<div class="payoff-details" style="background:transparent !important;background-color:transparent !important">'+
+          '<div><span>Scheduled payment</span><strong>'+fmt(now)+'</strong></div>'+
+          '<div><span>Due date</span><strong>'+fmt(due)+'</strong></div>'+
+          '<div><span>Starting balance</span><strong>'+money(bal)+'</strong></div>'+
+          '<div><span>Interest</span><strong>Not yet posted</strong></div>'+
+          '<div><span>Payment to make</span><strong>'+money(amount)+'</strong></div>'+
+          '<div><span>Estimated ending balance</span><strong>'+money(ending)+'</strong></div>'+
+          '</div></details>';
+      }).join('');
+      if(available>0.005)extraSuggestion+='<div style="padding:10px;color:#ffe1a1">Unallocated budget: '+money(available)+'</div>';
+
     }
     const periodStyle=fullyPaid
       ?'background:linear-gradient(120deg,#145348 0%,#10463e 55%,#0c3834 100%) !important;background-color:#10463e !important;border:1px solid #31b78a !important;box-shadow:inset 0 1px 0 rgba(149,255,204,.12) !important'
@@ -234,7 +258,7 @@ function calculatePayoff(){
       '<span class="payoff-period-summary-item"><small>Remaining balance</small><strong>'+money(historicalRemaining)+'</strong></span>'+
       '<span class="payoff-period-chevron" aria-hidden="true">▾</span></summary>'+
       '<div class="payoff-period-body"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 4px 14px"><span>Payment budget: <strong>'+money(target)+'</strong></span><span style="color:'+(fullyPaid?'#83e9ba':'#f3ce7b')+';font-weight:700">Recorded: '+money(g.actual)+'</span></div>'+
-      (recorded||'<div class="empty">No payments recorded in this period.</div>')+extraSuggestion+'</div></details>';
+      recorded+extraSuggestion+'</div></details>';
   }).join('');
   $('#amortizationTable').innerHTML=warningsHtml+historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
