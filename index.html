@@ -814,13 +814,15 @@ populate();new MutationObserver(()=>{if(month.options.length<2)populate()}).obse
 (function(){
  function refresh(){
   document.querySelectorAll('#cardsTable .card-minimum-confirmation').forEach(el=>{
-   const c=(window.data?.cards||[]).find(x=>String(x.id)===el.dataset.cardId);
+   const c=((typeof data!=='undefined'?data.cards:[])||[]).find(x=>String(x.id)===el.dataset.cardId);
    if(!c||typeof payoffCurrentCycle!=='function')return;
    const cycle=payoffCurrentCycle(c);if(!cycle)return;
    const label=el.querySelector('.card-minimum-label'),button=el.querySelector('.card-minimum-toggle');
    const due=cycle.due.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-   label.textContent=(cycle.manual?'✓ Minimum confirmed paid':cycle.satisfied?'✓ Minimum covered by recorded payments':'Minimum not yet confirmed')+' · Due '+due;
-   button.textContent=cycle.manual?'Undo':'Mark paid';
+   const message=(cycle.manual?'✓ Minimum confirmed paid':cycle.satisfied?'✓ Minimum covered by recorded payments':'Minimum not yet confirmed')+' · Due '+due;
+   if(label.textContent!==message)label.textContent=message;
+   const buttonLabel=cycle.manual?'Undo':'Mark paid';
+   if(button.textContent!==buttonLabel)button.textContent=buttonLabel;
    button.classList.toggle('is-confirmed',cycle.manual);
    button.setAttribute('aria-label',(cycle.manual?'Undo paid confirmation for ':'Mark minimum paid for ')+c.name+' due '+due);
   });
