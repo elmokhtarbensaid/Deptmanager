@@ -114,18 +114,36 @@ function calculatePayoff(){
         x.nextDue=dueDateForMonth(x.nextDue.getFullYear(),x.nextDue.getMonth()+1,Number(x.card.dueDay));
       }
     }
-    // Protect required minimums first, earliest due date first.
-    for(const x of s.filter(x=>x.bal>0.005&&x.nextDue).sort((a,b)=>a.nextDue-b.nextDue)){
+    // Consolidate minimum payments: pay a card when its deadline requires it,
+    // or earlier only when future payment budgets cannot cover all due minimums.
+    const obligations=s.filter(x=>x.bal>0.005&&x.nextDue).sort((a,b)=>a.nextDue-b.nextDue);
+    const availableFutureBefore=deadline=>{
+      let total=0,day=new Date(nextPayDate),step=1;
+      while(day<=deadline&&step<=60){
+        total+=payoffBudget(frequency,period+historical.length+step,payment);
+        if(frequency==='weekly')day.setDate(day.getDate()+7);
+        else day.setMonth(day.getMonth()+1);
+        step++;
+      }
+      return total;
+    };
+    // Reserve only the amount that cannot safely wait for later paydays.
+    // Use cumulative deadlines so several cards share the same future budget.
+    let cumulativeDue=0,committedNow=0;
+    for(const x of obligations){
       const outstanding=Math.max(0,Math.min(x.bal,x.min-x.paidMin));
       if(outstanding<=0.005)continue;
-      const days=Math.max(0,Math.floor((x.nextDue-date)/86400000));
-      const slots=frequency==='weekly'?Math.floor(days/7)+1:1;
-      const urgent=x.nextDue<nextPayDate;
-      const required=urgent?outstanding:Math.ceil(outstanding/Math.max(1,slots)*100)/100;
-      const v=Math.min(rem,x.bal,required);
-      x.bal-=v;x.paidMin+=v;rem-=v;totalPaid+=v;
-      paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
-      if(urgent&&v+0.005<outstanding)dueWarnings.push(x.card.name+': '+money(outstanding-v)+' short by '+isoDate(x.nextDue));
+      cumulativeDue+=outstanding;
+      const futureCapacity=availableFutureBefore(x.nextDue);
+      const neededNow=Math.max(0,cumulativeDue-futureCapacity-committedNow);
+      const v=Math.min(rem,x.bal,outstanding,Math.ceil(neededNow*100)/100);
+      if(v>0.005){
+        x.bal-=v;x.paidMin+=v;rem-=v;totalPaid+=v;committedNow+=v;
+        paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
+      }
+      if(x.nextDue<nextPayDate&&v+0.005<outstanding){
+        dueWarnings.push(x.card.name+': '+money(outstanding-v)+' minimum shortfall by '+isoDate(x.nextDue));
+      }
     }
     // Only use remaining funds to clear small balances.
     for(const x of s.filter(x=>x.bal>0.005&&x.bal<150).sort((a,b)=>a.bal-b.bal)){
@@ -142,7 +160,7 @@ function calculatePayoff(){
       x.bal-=v;rem-=v;totalPaid+=v;
       paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
     }
-    for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date);let recommended=new Date(due);recommended.setDate(recommended.getDate()-3);if(recommended<date)recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,start:st,interest:v,payment:p,end:x.bal})}}
+    for(const x of s.slice().sort((a,b)=>a.bal-b.bal)){const st=start.get(x.card.id)||0,v=interest.get(x.card.id)||0,p=paid.get(x.card.id)||0;if(st>0.005||p>0.005||x.bal>0.005){const d=Number(x.card.dueDay);let due=x.nextDue?new Date(x.nextDue):(d>=1&&d<=31?dueDateForMonth(year,month,d):new Date(date));let recommended=new Date(date);display.push({period,date:new Date(date),recommendedDate:recommended,dueDate:due,card:x.card.name,start:st,interest:v,payment:p,end:x.bal})}}
     lastMonth=month;lastYear=year;
   }
   const pastCount=historical.length;
