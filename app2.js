@@ -297,6 +297,8 @@ function calculatePayoff(){
         paid.set(x.card.id,(paid.get(x.card.id)||0)+v);
       }
     }
+    // A donor may transfer only the amount above its own satisfied minimum.
+    const xMinDue=x=>Math.min(x.min,x.bal+(paid.get(x.card.id)||0));
     // Consolidate mandatory sub-$25 payments after avalanche allocation.
     // Move only optional extra money from another card, never a manual override
     // or a minimum reserved for its own deadline.
@@ -309,7 +311,8 @@ function calculatePayoff(){
         if(need<=0.005)break;
         const original=paid.get(donor.card.id)||0;
         const protectedAmount=protectedPayments.get(donor.card.id)||0;
-        const transferable=Math.max(0,original-Math.max(25,protectedAmount));
+        const minimumProtected=Math.max(0,xMinDue(donor));
+        const transferable=Math.max(0,Math.min(original-Math.max(25,protectedAmount),donor.paidMin-minimumProtected));
         const move=Math.min(need,transferable);
         if(move<=0.005)continue;
         paid.set(donor.card.id,Math.round((original-move)*100)/100);
