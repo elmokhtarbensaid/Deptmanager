@@ -202,10 +202,7 @@ function calculatePayoff(){
         '<div class="payoff-details-label">Details <span>▾</span></div>'+
         '</div></summary><div class="payoff-details" style="background:transparent !important;background-color:transparent !important">'+
         '<div><span>Payment date</span><strong>'+dateText+'</strong></div>'+
-        '<div><span>Due date</span><strong>'+fmt(due)+'</strong></div>'+
-        '<div><span>Starting balance</span><strong>'+(starting===null?'Unavailable':money(starting))+'</strong></div>'+
-        '<div><span>Interest</span><strong>Not separately recorded</strong></div>'+
-        '<div><span>Payment made</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
+        '<div><span>Amount paid</span><strong style="color:#83e9ba">'+money(t.amount)+'</strong></div>'+
         '<div><span>Ending balance</span><strong>'+(ending===null?'Unavailable':money(ending))+'</strong></div>'+
         '</div></details>';
     }).join('');
