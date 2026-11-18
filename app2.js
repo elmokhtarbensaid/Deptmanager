@@ -48,9 +48,35 @@ function payoffCurrentCycle(card,reference=new Date()){
  const paid=(card.transactions||[]).filter(t=>t.type==='payment'&&t.date>iso(previous)&&t.date<=iso(now)).reduce((sum,t)=>sum+Math.max(0,Number(t.amount)||0),0);
  const key=String(card.id)+'|'+iso(due);
  const override=data?.minimumCycleOverrides?.[key];
- const minimum=cardMinimum(card);
- return {key,due,paid,minimum,satisfied:override===true||(override!==false&&paid+0.005>=minimum),manual:override===true,remaining:Math.max(0,minimum-paid)};
+ const estimatedMinimum=cardMinimum(card);
+ // A manual schedule edit changes the planned payment, not the bank's required
+ // minimum. Display it alongside the estimate to avoid contradictory amounts.
+ const scheduledOverrides=Object.entries(payoffCardOverrides()).flatMap(([periodKey,values])=>{
+   const [freq,indexText]=periodKey.split(':');
+   const amount=values?.[card.id];
+   if(amount===undefined||!Number.isFinite(Number(amount)))return [];
+   const index=Number(indexText);
+   return [{freq,index,amount:Number(amount)}];
+ });
+ const minimum=Number(data?.minimumAmountOverrides?.[key]??estimatedMinimum);
+ return {key,due,paid,minimum,estimatedMinimum,scheduledOverrides,satisfied:override===true||(override!==false&&paid+0.005>=minimum),manual:override===true,remaining:Math.max(0,minimum-paid)};
 }
+function payoffMinimumAmountEdit(cardId){
+ const card=(data.cards||[]).find(c=>String(c.id)===String(cardId));if(!card)return;
+ const cycle=payoffCurrentCycle(card);if(!cycle)return;
+ const value=prompt('Bank-confirmed minimum for '+card.name+' due '+cycle.due.toLocaleDateString()+' (blank to restore estimate):',String(cycle.minimum.toFixed(2)));
+ if(value===null)return;
+ const amount=value.trim()===''?null:Number(value);
+ if(amount!==null&&(!Number.isFinite(amount)||amount<0)){alert('Enter a valid amount.');return}
+ const overrides={...(data.minimumAmountOverrides||{})};
+ if(amount===null)delete overrides[cycle.key];else overrides[cycle.key]=Math.round(amount*100)/100;
+ data.minimumAmountOverrides=overrides;
+ autoSaveDatabase();calculatePayoff();
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-minimum-amount-edit]');if(!b)return;
+ e.preventDefault();e.stopPropagation();payoffMinimumAmountEdit(b.dataset.minimumAmountEdit);
+});
 function payoffMinimumToggle(cardId){
  const card=(data.cards||[]).find(c=>String(c.id)===String(cardId));if(!card)return;
  const cycle=payoffCurrentCycle(card);if(!cycle){alert('Set the card due day first.');return}
@@ -429,7 +455,11 @@ function calculatePayoff(){
   const minimumStatusHtml='<div class="payoff-minimum-status" style="margin:12px 0;padding:12px;border:1px solid #35577d;border-radius:12px;background:#132e4c"><strong>Monthly minimum payment status</strong><div style="font-size:12px;color:#afc6dd;margin:5px 0 10px">Recorded payments are estimated by due-date cycle. Confirm with your bank. Manual status applies only to the shown due date.</div>'+
     cards.map(c=>{const cycle=payoffCurrentCycle(c);if(!cycle)return '';
       const due=cycle.due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #315071"><div><strong>'+esc(c.name)+'</strong><div style="font-size:12px;color:#b9cbe0">Due '+due+' · '+(cycle.manual?'Manually confirmed':cycle.satisfied?'Estimated satisfied':'Estimated remaining '+money(cycle.remaining))+'</div></div><button type="button" data-minimum-toggle="'+esc(String(c.id))+'" style="flex-shrink:0;padding:7px 9px;border:1px solid #4d9df2;border-radius:8px;background:'+(cycle.manual?'#24516b':'#1251a0')+';color:white;cursor:pointer">'+(cycle.manual?'Undo confirmation':'Mark satisfied')+'</button></div>';
+      const confirmed=Object.prototype.hasOwnProperty.call(data.minimumAmountOverrides||{},cycle.key);
+      const manualSchedule=cycle.scheduledOverrides.filter(v=>v.freq===frequency).map(v=>v.amount);
+      const planned=manualSchedule.length?Math.max(...manualSchedule):null;
+      const status=cycle.manual?'Manually confirmed':cycle.satisfied?'Estimated satisfied':'Estimated remaining '+money(cycle.remaining);
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #315071"><div><strong>'+esc(c.name)+'</strong><div style="font-size:12px;color:#b9cbe0">Due '+due+' · '+status+' · '+(confirmed?'Confirmed minimum ':'Estimated minimum ')+money(cycle.minimum)+(planned!==null?' · Manual planned payment '+money(planned):'')+'</div></div><div style="display:flex;gap:5px;flex-shrink:0"><button type="button" data-minimum-amount-edit="'+esc(String(c.id))+'" style="padding:7px 9px;border:1px solid #4d9df2;border-radius:8px;background:#24516b;color:white;cursor:pointer">Edit min</button><button type="button" data-minimum-toggle="'+esc(String(c.id))+'" style="padding:7px 9px;border:1px solid #4d9df2;border-radius:8px;background:'+(cycle.manual?'#24516b':'#1251a0')+';color:white;cursor:pointer">'+(cycle.manual?'Undo confirmation':'Mark satisfied')+'</button></div></div>';
     }).join('')+'</div>';
   $('#amortizationTable').innerHTML=minimumStatusHtml+warningsHtml+historyHtml+[...groups.values()].map(g=>{
     const remaining=g.rows.reduce((sum,x)=>sum+x.end,0);
