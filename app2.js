@@ -197,7 +197,9 @@ function calculatePayoff(){
     const start=new Map(s.map(x=>[x.card.id,x.bal])), interest=new Map(s.map(x=>[x.card.id,0])), paid=new Map(s.map(x=>[x.card.id,0]));
     if(frequency==='monthly'||newMonth){
       // Minimum payments reset at each card's due date, not calendar month.
-      for(const x of s.filter(x=>x.bal>0.005)){const v=x.bal*x.rate;x.bal+=v;interest.set(x.card.id,v);totalInterest+=v;x.min=Number(data?.minimumAmountOverrides?.[String(x.card.id)+'|'+isoDate(x.nextDue)]??cardMinimum(x.card,x.bal,v))}
+      for(const x of s.filter(x=>x.bal>0.005)){const v=x.bal*x.rate;x.bal+=v;interest.set(x.card.id,v);totalInterest+=v}
+      // Interest accrual must NOT recalculate the minimum in the middle of
+      // its due-date cycle. The obligation is fixed until the next statement.
       lastMonth=month;lastYear=year;
     }
     let rem=payoffBudget(frequency,period+historical.length,payment);
